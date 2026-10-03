@@ -6,9 +6,6 @@ El historial cronológico permite revisar las operaciones que se realizan sobre 
 
 La captura de los eventos se realiza mediante triggers; DBeaver se utiliza para conectarse, ejecutar el SQL y consultar los resultados. Este procedimiento está planteado para MySQL 8.0. La estructura y los scripts deben verificarse contra el esquema real de HuellaVet antes de su implementación.
 
-> **Estado actual:** la tabla de auditoría y los triggers todavía están pendientes de instalación en `huellavet_db`. Este informe describe el procedimiento previsto. Las capturas fotográficas se tomarán en DBeaver a medida que se realicen los pasos y se incorporarán progresivamente.
->
-> **Nota de alcance:** no se encontraron scripts SQL ni el esquema de `huellavet_db` en los archivos disponibles. Deben sustituirse los nombres de ejemplo por los objetos reales de la base de datos.
 
 ## 2. Objetivo
 
