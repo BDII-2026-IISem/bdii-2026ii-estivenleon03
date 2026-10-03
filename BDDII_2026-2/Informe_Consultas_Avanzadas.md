@@ -1,8 +1,9 @@
 # INFORME DE CONSULTAS AVANZADAS, PROCEDIMIENTOS ALMACENADOS Y AUDITORÍA - MYSQL
 
 **Proyecto:** Sistema de Gestión Veterinaria "HuellaVet"  
-**Autor:** León  
+**Autor:** Steven León Acosta  
 **Asignatura:** Bases de Datos II  
+**Docente:** Jaider J Quintero Mendoza   
 **Motor de Base de Datos:** MySQL 8.0+
 
 ## 1. Introducción y contexto del proyecto
