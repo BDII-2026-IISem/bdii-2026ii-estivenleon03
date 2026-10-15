@@ -25,47 +25,47 @@ A continuación se presenta la verificación física de la carga inicial de dato
 
 **Conteo de registros de la base de datos**
 
-![Conteo de registros de la base de datos](evidencias/consultas_avanzadas/numero_registro_DB.png)
+![Conteo de registros de la base de datos](../consultas_avanzadas/numero_registro_DB.png)
 
 **Registros de la tabla owners**
-![Registros de users](evidencias/consultas_avanzadas/owners.png)
+![Registros de users](../consultas_avanzadas/owners.png)
 
 
 **Registros de la tabla users**
 
-![Registros de users](evidencias/consultas_avanzadas/users.png)
+![Registros de users](../consultas_avanzadas/users.png)
 
 **Registros de la tabla veterinarians**
 
-![Registros de veterinarians](evidencias/consultas_avanzadas/veterinarians.png)
+![Registros de veterinarians](../consultas_avanzadas/veterinarians.png)
 
 **Registros de la tabla pets**
 
-![Registros de pets](evidencias/consultas_avanzadas/pets.png)
+![Registros de pets](../consultas_avanzadas/pets.png)
 
 **Registros de las tablas vaccines y vaccine_batches**
 
-![Registros de vaccines y vaccine_batches](evidencias/consultas_avanzadas/vaccines_and_Vbatches.png)
+![Registros de vaccines y vaccine_batches](../consultas_avanzadas/vaccines_and_Vbatches.png)
 
 **Registros de la tabla appointments**
 
-![Registros de appointments](evidencias/consultas_avanzadas/appointments.png)
+![Registros de appointments](../consultas_avanzadas/appointments.png)
 
 **Registros de la tabla consultations**
 
-![Registros de consultations](evidencias/consultas_avanzadas/consultations.png)
+![Registros de consultations](../consultas_avanzadas/consultations.png)
 
 **Registros de la tabla prescriptions**
 
-![Registros de prescriptions](evidencias/consultas_avanzadas/prescriptions.png)
+![Registros de prescriptions](../consultas_avanzadas/prescriptions.png)
 
 **Registros de la tabla vaccine_applications**
 
-![Registros de vaccine_applications](evidencias/consultas_avanzadas/vaccine_aplications.png)
+![Registros de vaccine_applications](../consultas_avanzadas/vaccine_aplications.png)
 
 **Registros de la tabla payments**
 
-![Registros de payments](evidencias/consultas_avanzadas/payments.png)
+![Registros de payments](../consultas_avanzadas/payments.png)
 
 ---
 
@@ -85,7 +85,7 @@ FROM owners;
 ```
 
 **Evidencia de la ejecución del SELECT:**
-![alt text](evidencias/consultas_avanzadas/image.png)
+![alt text](../consultas_avanzadas/image.png)
 
 **Código SQL del procedimiento almacenado:**
 
@@ -100,7 +100,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image.png)
+![alt text](../consultas_avanzadas/image.png)
 
 **Código SQL para ejecutar el procedure:**
 
@@ -109,7 +109,7 @@ CALL sp_get_basic_owners();
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-1.png)
+![alt text](../consultas_avanzadas/image-1.png)
 ---
 
 ### 3.2 Consulta ordenada cronológicamente sobre citas (appointments)
@@ -127,7 +127,7 @@ ORDER BY start_time DESC;
 ```
 
 **Evidencia de la ejecución del SELECT:**
-![alt text](evidencias/consultas_avanzadas/image-2.png)
+![alt text](../consultas_avanzadas/image-2.png)
 
 **Código SQL del procedimiento almacenado:**
 
@@ -143,7 +143,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-3.png)
+![alt text](../consultas_avanzadas/image-3.png)
 **Código SQL para ejecutar el procedure:**
 
 ```sql
@@ -151,7 +151,7 @@ CALL sp_get_appointments_desc();
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-4.png)
+![alt text](../consultas_avanzadas/image-4.png)
 ---
 
 ### 3.3 Consulta a múltiples tablas mediante WHERE implícito (owners y pets)
@@ -169,7 +169,7 @@ WHERE o.id = p.owner_id;
 ```
 
 **Evidencia de la ejecución del SELECT:**
-![alt text](evidencias/consultas_avanzadas/image-5.png)
+![alt text](../consultas_avanzadas/image-5.png)
 **Código SQL del procedimiento almacenado:**
 
 ```sql
@@ -184,7 +184,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-6.png)
+![alt text](../consultas_avanzadas/image-6.png)
 **Código SQL para ejecutar el procedure:**
 
 ```sql
@@ -192,7 +192,7 @@ CALL sp_get_owners_pets_where();
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-7.png)
+![alt text](../consultas_avanzadas/image-7.png)
 ---
 
 ### 3.4 Consulta a múltiples tablas mediante JOIN explícito (owners, pets y appointments)
@@ -211,7 +211,7 @@ JOIN appointments a ON p.id = a.pet_id;
 ```
 
 **Evidencia de la ejecución del SELECT:**
-![alt text](evidencias/consultas_avanzadas/image-8.png)
+![alt text](../consultas_avanzadas/image-8.png)
 **Código SQL del procedimiento almacenado:**
 
 ```sql
@@ -227,7 +227,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-9.png)
+![alt text](../consultas_avanzadas/image-9.png)
 **Código SQL para ejecutar el procedure:**
 
 ```sql
@@ -235,7 +235,7 @@ CALL sp_get_appointments_full_join();
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-10.png)
+![alt text](../consultas_avanzadas/image-10.png)
 ---
 
 ### 3.5 Filtros condicionales por estado de atención (status)
@@ -255,7 +255,7 @@ WHERE a.status = 'COMPLETED';
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 1):**
-![alt text](evidencias/consultas_avanzadas/image-11.png)
+![alt text](../consultas_avanzadas/image-11.png)
 
 **Código SQL de la consulta - Forma 2 (con WHERE implícito):**
 
@@ -266,7 +266,7 @@ WHERE o.id = p.owner_id AND p.id = a.pet_id AND a.status = 'SCHEDULED';
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 2):**
-![alt text](evidencias/consultas_avanzadas/image-12.png)
+![alt text](../consultas_avanzadas/image-12.png)
 **Código SQL del procedimiento almacenado parametrizado:**
 
 ```sql
@@ -283,7 +283,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-13.png)
+![alt text](../consultas_avanzadas/image-13.png)
 **Código SQL para ejecutar el procedure:**
 
 ```sql
@@ -291,7 +291,7 @@ CALL sp_get_appointments_by_status('COMPLETED');
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-14.png)
+![alt text](../consultas_avanzadas/image-14.png)
 ---
 
 ### 3.6 Búsqueda por patrones mediante filtros LIKE y CONCAT
@@ -309,7 +309,7 @@ WHERE email LIKE 'm%';
 ```
 
 **Evidencia de la ejecución del SELECT 1:**
-![alt text](evidencias/consultas_avanzadas/image-15.png)
+![alt text](../consultas_avanzadas/image-15.png)
 **Código SQL de la consulta 2 (dominio Gmail con CONCAT):**
 
 ```sql
@@ -319,7 +319,7 @@ WHERE email LIKE CONCAT('%', 'gmail', '%');
 ```
 
 **Evidencia de la ejecución del SELECT 2:**
-![alt text](evidencias/consultas_avanzadas/image-16.png)
+![alt text](../consultas_avanzadas/image-16.png)
 **Código SQL de la consulta 3 (combinación con estado COMPLETED):**
 
 ```sql
@@ -331,7 +331,7 @@ WHERE a.status = 'COMPLETED' AND o.email LIKE 'm%';
 ```
 
 **Evidencia de la ejecución del SELECT 3:**
-![alt text](evidencias/consultas_avanzadas/image-17.png)
+![alt text](../consultas_avanzadas/image-17.png)
 **Código SQL del procedimiento almacenado:**
 
 ```sql
@@ -348,7 +348,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-18.png)
+![alt text](../consultas_avanzadas/image-18.png)
 **Código SQL para ejecutar el procedure:**
 
 ```sql
@@ -356,7 +356,7 @@ CALL sp_search_owners_by_email_pattern('gmail');
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-19.png)
+![alt text](../consultas_avanzadas/image-19.png)
 ---
 
 ### 3.7 Filtros por rango de fechas mediante BETWEEN en pagos (payments)
@@ -378,7 +378,7 @@ ORDER BY pay.payment_date ASC;
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 1):**
-![alt text](evidencias/consultas_avanzadas/image-20.png)
+![alt text](../consultas_avanzadas/image-20.png)
 **Código SQL de la consulta - Forma 2 (con WHERE implícito):**
 
 ```sql
@@ -392,7 +392,7 @@ ORDER BY pay.payment_date ASC;
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 2):**
-![alt text](evidencias/consultas_avanzadas/image-21.png)
+![alt text](../consultas_avanzadas/image-21.png)
 **Código SQL del procedimiento almacenado:**
 
 ```sql
@@ -411,7 +411,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-22.png)
+![alt text](../consultas_avanzadas/image-22.png)
 **Código SQL para ejecutar el procedure:**
 
 ```sql
@@ -419,7 +419,7 @@ CALL sp_get_payments_between_dates('2025-01-01 00:00:00', '2026-12-31 23:59:59')
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-23.png)
+![alt text](../consultas_avanzadas/image-23.png)
 ---
 
 ### 3.8 Consultas con agrupamiento GROUP BY y filtro secundario HAVING
@@ -445,7 +445,7 @@ ORDER BY total_gastado DESC;
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 1):**
-![alt text](evidencias/consultas_avanzadas/image-24.png)
+![alt text](../consultas_avanzadas/image-24.png)
 **Código SQL - Forma 2 (pagos confirmados en efectivo):**
 
 ```sql
@@ -462,7 +462,7 @@ ORDER BY total_gastado DESC;
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 2):**
-![alt text](evidencias/consultas_avanzadas/image-25.png)
+![alt text](../consultas_avanzadas/image-25.png)
 **Código SQL - Forma 3 (filtro HAVING por total abonado >= $50,000):**
 
 ```sql
@@ -479,7 +479,7 @@ ORDER BY total_suma DESC;
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 3):**
-![alt text](evidencias/consultas_avanzadas/image-26.png)
+![alt text](../consultas_avanzadas/image-26.png)
 **Código SQL - Forma 4 (filtro HAVING combinado por cantidad y monto):**
 
 ```sql
@@ -497,7 +497,7 @@ ORDER BY total_anual DESC;
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 4):**
-![alt text](evidencias/consultas_avanzadas/image-27.png)
+![alt text](../consultas_avanzadas/image-27.png)
 **Código SQL del procedimiento almacenado con HAVING:**
 
 ```sql
@@ -519,7 +519,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-28.png)
+![alt text](../consultas_avanzadas/image-28.png)
 **Código SQL para ejecutar el procedure:**
 
 ```sql
@@ -527,7 +527,7 @@ CALL sp_get_top_spending_owners(50000.00);
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-29.png)
+![alt text](../consultas_avanzadas/image-29.png)
 ---
 
 ### 3.9 Subconsultas y teoría de conjuntos (NOT IN vs LEFT JOIN ... IS NULL)
@@ -550,7 +550,7 @@ WHERE o.id NOT IN (
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 1):**
-![alt text](evidencias/consultas_avanzadas/image-30.png)
+![alt text](../consultas_avanzadas/image-30.png)
 **Código SQL - Forma 2 (LEFT JOIN con condición IS NULL):**
 
 ```sql
@@ -562,7 +562,7 @@ WHERE a.id IS NULL;
 ```
 
 **Evidencia de la ejecución del SELECT (Forma 2):**
-![alt text](evidencias/consultas_avanzadas/image-31.png)
+![alt text](../consultas_avanzadas/image-31.png)
 **Código SQL del procedimiento almacenado:**
 
 ```sql
@@ -579,7 +579,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-32.png)
+![alt text](../consultas_avanzadas/image-32.png)
 **Código SQL para ejecutar el procedure:**
 
 ```sql
@@ -587,7 +587,7 @@ CALL sp_get_owners_without_appointments();
 ```
 
 **Evidencia de la ejecución del procedure:**
-![alt text](evidencias/consultas_avanzadas/image-33.png)
+![alt text](../consultas_avanzadas/image-33.png)
 ---
 
 ## 4. Sistema de auditoría e inmutabilidad con triggers en la tabla payments
@@ -617,7 +617,7 @@ CREATE TABLE IF NOT EXISTS payments_audit (
 ```
 
 **Evidencia de la creación de la tabla de auditoría:**
-![alt text](evidencias/consultas_avanzadas/image-34.png)
+![alt text](../consultas_avanzadas/image-34.png)
 ### 4.3 Trigger después de insertar (AFTER INSERT)
 
 **Código SQL:**
@@ -647,7 +647,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del trigger AFTER INSERT:**
-![alt text](evidencias/consultas_avanzadas/image-35.png)
+![alt text](../consultas_avanzadas/image-35.png)
 ### 4.4 Trigger después de actualizar (AFTER UPDATE)
 
 **Código SQL:**
@@ -685,7 +685,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del trigger AFTER UPDATE:**
-![alt text](evidencias/consultas_avanzadas/image-36.png)
+![alt text](../consultas_avanzadas/image-36.png)
 ### 4.5 Trigger después de eliminar (AFTER DELETE)
 
 **Código SQL:**
@@ -716,7 +716,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del trigger AFTER DELETE:**
-![alt text](evidencias/consultas_avanzadas/image-37.png)
+![alt text](../consultas_avanzadas/image-37.png)
 ### 4.6 Trigger de bloqueo de modificación (BEFORE UPDATE)
 
 **Código SQL:**
@@ -733,7 +733,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del trigger BEFORE UPDATE:**
-![alt text](evidencias/consultas_avanzadas/image-38.png)
+![alt text](../consultas_avanzadas/image-38.png)
 ### 4.7 Trigger de bloqueo de eliminación (BEFORE DELETE)
 
 **Código SQL:**
@@ -750,7 +750,7 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del trigger BEFORE DELETE:**
-![alt text](evidencias/consultas_avanzadas/image-39.png)
+![alt text](../consultas_avanzadas/image-39.png)
 ### 4.8 Trigger guardián de inserción directa (BEFORE INSERT)
 
 **Código SQL:**
@@ -769,23 +769,23 @@ DELIMITER ;
 ```
 
 **Evidencia de la creación del trigger BEFORE INSERT:**
-![alt text](evidencias/consultas_avanzadas/image-40.png)
+![alt text](../consultas_avanzadas/image-40.png)
 ---
 
 ## 5. Evidencias de funcionalidad y pruebas de auditoría
 
 - Evidencia de inserción registrada en auditoría
-![alt text](evidencias/consultas_avanzadas/image-41.png)
+![alt text](../consultas_avanzadas/image-41.png)
 - Evidencia de actualización registrada en auditoría (before_data y after_data)
-![alt text](evidencias/consultas_avanzadas/image-42.png)
+![alt text](../consultas_avanzadas/image-42.png)
 - Evidencia de eliminación registrada en auditoría
-![alt text](evidencias/consultas_avanzadas/image-43.png)
+![alt text](../consultas_avanzadas/image-43.png)
 - Evidencia de bloqueo de modificación directa sobre auditoría (UPDATE rechazado)
-![alt text](evidencias/consultas_avanzadas/image-44.png)
+![alt text](../consultas_avanzadas/image-44.png)
 - Evidencia de bloqueo de borrado directo sobre auditoría (DELETE rechazado)
-![alt text](evidencias/consultas_avanzadas/image-45.png)
+![alt text](../consultas_avanzadas/image-45.png)
 - Evidencia de bloqueo de inserción directa en auditoría (INSERT rechazado)
-![alt text](evidencias/consultas_avanzadas/image-46.png)
+![alt text](../consultas_avanzadas/image-46.png)
 ---
 
 ## 5. Evidencias de funcionalidad y pruebas de auditoría
@@ -800,7 +800,7 @@ VALUES (1, 'APPOINTMENT', 1, 'CASH', 99000.00, NOW(), 'PAID');
 SELECT * FROM payments_audit ORDER BY id DESC LIMIT 1;
 ```
 Evidencia
-![alt text](evidencias/consultas_avanzadas/image-47.png)
+![alt text](../consultas_avanzadas/image-47.png)
 
 ### 5.2 Registro automático de actualización (UPDATE)
 
@@ -821,7 +821,7 @@ LIMIT 1;
 ```
 
 **Evidencia:**
-![alt text](evidencias/consultas_avanzadas/image-48.png)
+![alt text](../consultas_avanzadas/image-48.png)
 
 ### 5.3 Registro automático de eliminación (DELETE)
 
@@ -841,7 +841,7 @@ LIMIT 1;
 ```
 
 **Evidencia:**
-![alt text](evidencias/consultas_avanzadas/image-49.png)
+![alt text](../consultas_avanzadas/image-49.png)
 
 ### 5.4 Prueba de inmutabilidad: Bloqueo de UPDATE directo
 
@@ -856,7 +856,7 @@ WHERE id = 1;
 ```
 
 **Evidencia:**
-![alt text](evidencias/consultas_avanzadas/image-50.png)
+![alt text](../consultas_avanzadas/image-50.png)
 ### 5.5 Prueba de inmutabilidad: Bloqueo de DELETE directo
 
 Cualquier intento de borrar registros históricos de la tabla `payments_audit` es abortado inmediatamente por el disparador `bd_payments_audit_block_delete`.
@@ -869,7 +869,7 @@ WHERE id = 1;
 ```
 
 **Evidencia:**
-![alt text](evidencias/consultas_avanzadas/image-51.png)
+![alt text](../consultas_avanzadas/image-51.png)
 ### 5.6 Prueba de inmutabilidad: Bloqueo de INSERT directo
 
 Intentar insertar registros manualmente en `payments_audit` sin pasar por la tabla principal `payments` es bloqueado por el disparador guardián.
@@ -884,7 +884,7 @@ VALUES
 ```
 
 **Evidencia:**
-![alt text](evidencias/consultas_avanzadas/image-52.png)
+![alt text](../consultas_avanzadas/image-52.png)
 
 ---
 

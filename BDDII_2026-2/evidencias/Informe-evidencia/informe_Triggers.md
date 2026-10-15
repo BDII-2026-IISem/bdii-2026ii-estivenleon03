@@ -32,9 +32,9 @@ La vista `v_chronological_clinical_records` reúne información clínica y datos
 
 En la definición generada se observan relaciones entre `pets`, `owners`, `consultations` y `veterinarians`, además de uniones opcionales con `prescriptions`, `vaccine_applications` y `vaccine_batches`. `GROUP_CONCAT(DISTINCT ...)` consolida los medicamentos y las vacunas asociados.
 
-![Columnas de la vista de registros clínicos en DBeaver]![alt text](../triggers/evidencia-12-vista-columnas.png)
+**Columnas de la vista de registros clínicos en DBeaver**![alt text](../triggers/evidencia-12-vista-columnas.png)
 
-![SQL generado para la vista de registros clínicos]![alt text](../triggers/evidencia-11-vista-sql.png)
+**SQL generado para la vista de registros clínicos**![alt text](../triggers/evidencia-11-vista-sql.png)
 La consulta mostrada en DBeaver es:
 
 ```sql
@@ -49,7 +49,7 @@ FROM v_chronological_clinical_records
 ORDER BY consultation_date, consultation_id;
 ```
 
-![Resultado de consulta a la vista clínica]
+**Resultado de consulta a la vista clínica**
 ![alt text](../triggers/evidencia-05-2026-09-29-233702.png)
 ## 3. Triggers de reglas de negocio documentados
 
@@ -57,11 +57,12 @@ ORDER BY consultation_date, consultation_id;
 
 `trg_deduct_vaccine_batch_stock` se ejecuta `AFTER INSERT` sobre `vaccine_applications`. Usa `NEW.vaccine_batch_id` para ubicar el lote y resta una unidad de `stock_quantity`.
 
-![Definición del trigger de descuento de stock]
+**Definición del trigger de descuento de stock**
 ![alt text](../triggers/evidencia-03-2026-09-29-222624.png)
 La consulta de validación muestra el lote `BAT-RAB-001` (`id = 1`) con `stock_quantity = 98`. La anotación de la captura indica un inventario inicial de 100 unidades y dos aplicaciones registradas, resultado consistente con el descuento esperado. La captura no muestra el valor inicial antes de esas operaciones.
 
-![Stock del lote después de registrar aplicaciones]![alt text](../triggers/evidencia-09-2026-09-29-234538.png)
+!**Stock del lote después de registrar aplicaciones**
+[alt text](../triggers/evidencia-09-2026-09-29-234538.png)
 
 En la definición visible no se aprecia una protección que impida que el inventario llegue a valores negativos. Conviene validar stock suficiente antes de descontarlo.
 
@@ -69,27 +70,27 @@ En la definición visible no se aprecia una protección que impida que el invent
 
 `trg_prevent_appointment_overlap` se ejecuta `BEFORE INSERT` sobre `appointments`. Comprueba citas no canceladas del mismo veterinario e identifica intervalos que se cruzan. Si encuentra una coincidencia, interrumpe la operación con `SQLSTATE '45000'`.
 
-![Definición del trigger de prevención de citas superpuestas]![alt text](../triggers/evidencia-04-2026-09-29-222803.png)
+**Definición del trigger de prevención de citas superpuestas**![alt text](../triggers/evidencia-04-2026-09-29-222803.png)
 
 La prueba de inserción para el veterinario `id = 1` fue rechazada con el mensaje `Veterinarian already has an appointment assigned in this time range.` Esto confirma el comportamiento para el intento capturado. La definición mostrada es para `INSERT`; no demuestra que los cambios de horario mediante `UPDATE` también se validen.
 
-![Rechazo de la cita superpuesta]![alt text](../triggers/evidencia-08-2026-09-29-233920.png)
+**Rechazo de la cita superpuesta**![alt text](../triggers/evidencia-08-2026-09-29-233920.png)
 
 ### 3.3 Inmutabilidad de datos clínicos
 
 El trigger `trg_consultations_immutability_update` se muestra como `BEFORE UPDATE` sobre `consultations`. Si cambian `diagnosis` o `symptoms`, genera un error y cancela la actualización. La regla visible protege esos dos campos, no necesariamente todas las columnas de la consulta.
 
-![Definición del trigger de inmutabilidad clínica]![alt text](../triggers/evidencia-02-2026-09-29-222547.png)
+**Definición del trigger de inmutabilidad clínica**![alt text](../triggers/evidencia-02-2026-09-29-222547.png)
 
 Al intentar cambiar el diagnóstico de la consulta `id = 1`, DBeaver presentó el error `1644` / `45000` con el mensaje `Clinical records (diagnosis and symptoms) are immutable.` La captura confirma el rechazo de esa operación.
 
-![Rechazo de la actualización del diagnóstico]
+**Rechazo de la actualización del diagnóstico**
 ![alt text](../triggers/evidencia-06-2026-09-29-233807.png)
 La fuente de `trg_consultations_immutability_delete` declara `BEFORE DELETE` sobre `consultations` y rechaza la operación con un error. Sin embargo, las propiedades de DBeaver muestran `Type: INSERT`, lo cual no coincide con el código fuente visible. La prueba sí muestra que `DELETE FROM consultations WHERE id = 1` fue rechazado con el mensaje `Deleting clinical records is strictly prohibited.` Para cerrar esta discrepancia, verificar la definición almacenada en el servidor.
 
-![Código y propiedades del trigger de protección contra eliminación]![alt text](../triggers/evidencia-01-2026-09-29-220507.png)
+**Código y propiedades del trigger de protección contra eliminación**![alt text](../triggers/evidencia-01-2026-09-29-220507.png)
 
-![Rechazo de la eliminación de una consulta]
+**Rechazo de la eliminación de una consulta**
 ![alt text](../triggers/evidencia-07-2026-09-29-233843.png)
 Consulta recomendada para comprobarla:
 
@@ -101,7 +102,7 @@ SHOW CREATE TRIGGER trg_consultations_immutability_delete;
 
 Una consulta de resumen devuelve 15 propietarios, 20 mascotas, 20 citas, 15 consultas, 15 prescripciones, 10 aplicaciones de vacunas y 15 pagos. Estos valores describen el estado visible de las tablas al momento de la captura; no prueban por sí mismos la ejecución de un trigger.
 
-![Conteos generales de las tablas principales]
+**Conteos generales de las tablas principales**
 ![alt text](../triggers/evidencia-10-2026-09-29-234940.png)
 ## 4. Propuesta pendiente: auditoría cronológica
 
