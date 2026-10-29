@@ -1,10 +1,15 @@
 export interface Mascota {
-  id?: number;
-  nombre: string;
-  especie: string;
-  raza: string;
-  edad: string;
-  propietario_id: number;
-  propietario_nombre?: string;
+  id: number;
+  owner: number;
+  name: string;
+  species: string | null;
+  breed: string | null;
+  birth_date: string | null;
+  gender: 'MALE' | 'FEMALE' | null;
+  description: string | null;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
+
+export type MascotaPayload = Omit<Mascota, 'id' | 'created_at' | 'updated_at'>;

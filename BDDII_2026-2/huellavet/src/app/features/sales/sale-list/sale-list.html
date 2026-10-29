@@ -1,4 +1,4 @@
-<app-page-header title="Registro de Ventas y Servicios" subtitle="Facturación de servicios e insumos clínicos.">
+<app-page-header title="Ventas y Pagos" subtitle="Ventas de productos e insumos vinculadas con sus propietarios y pagos.">
   <p-tag [value]="totalAvailableStock() + ' unidades disponibles'" severity="info" [rounded]="true" />
   <button pButton type="button" severity="success" (click)="openCreate()">
     <i pButtonIcon class="pi pi-plus"></i>
@@ -35,13 +35,14 @@
       <th pSortableColumn="id">
         Venta # <i class="pi pi-sort-alt text-xs text-slate-400"></i>
       </th>
-      <th>Cliente / Propietario</th>
+      <th>Propietario</th>
       <th pSortableColumn="saleDate">
         Fecha <i class="pi pi-sort-alt text-xs text-slate-400"></i>
       </th>
       <th pSortableColumn="total">
         Total <i class="pi pi-sort-alt text-xs text-slate-400"></i>
       </th>
+      <th>Pagado / Saldo</th>
       <th>Estado</th>
     </tr>
   </ng-template>
@@ -60,7 +61,15 @@
         <p class="text-sm text-slate-300">{{ sale.saleDate | date : 'medium' }}</p>
       </td>
       <td>
-        <p class="text-sm font-semibold text-emerald-400">{{ sale.total | currency : 'USD' }}</p>
+        <p class="text-sm font-semibold text-emerald-400">{{ sale.total | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</p>
+      </td>
+      <td>
+        <p class="text-sm text-slate-200">{{ sale.paidAmount || '0.00' | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</p>
+        @if (sale.balanceDue && sale.balanceDue !== '0' && sale.balanceDue !== '0.00') {
+          <p class="text-xs text-amber-400">Saldo: {{ sale.balanceDue | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</p>
+        } @else {
+          <p class="text-xs text-emerald-400">Pagada</p>
+        }
       </td>
       <td>
         <app-status-tag [status]="sale.status" />
@@ -70,7 +79,7 @@
 
   <ng-template #emptymessage>
     <tr>
-      <td colspan="5">
+      <td colspan="6">
         @if (filter()) {
           <app-empty-state
             icon="pi pi-search"

@@ -1,0 +1,152 @@
+<div class="space-y-8">
+  <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Prescripciones y vacunas</h1>
+      <p class="text-sm text-slate-400">Tratamientos y aplicaciones enlazadas al historial de consulta.</p>
+    </div>
+  </div>
+
+  @if (error()) {
+    <p-message severity="error" styleClass="w-full">{{ error() }}</p-message>
+  }
+
+  <section class="space-y-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-semibold text-white">Prescripciones</h2>
+        <p class="text-sm text-slate-400">Medicamentos asociados a una consulta existente.</p>
+      </div>
+      <button pButton type="button" severity="success" (click)="openNewPrescription()" [disabled]="consultations().length === 0">
+        <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nueva prescripción</span>
+      </button>
+    </div>
+    <p-table [value]="prescriptions()" [loading]="loading()" dataKey="id" [paginator]="prescriptions().length > 10" [rows]="10">
+      <ng-template #header>
+        <tr><th>Medicamento</th><th>Consulta / mascota</th><th>Dosis</th><th>Frecuencia</th><th>Duración</th><th>Estado</th><th class="text-right">Acciones</th></tr>
+      </ng-template>
+      <ng-template #body let-item>
+        <tr>
+          <td><p class="font-medium text-white">{{ item.medication_name }}</p><p class="text-xs text-slate-400">{{ item.description || '—' }}</p></td>
+          <td><p>{{ consultationLabel(item.consultation) }}</p><p class="text-xs text-slate-400">{{ petNameForConsultation(item.consultation) }}</p></td>
+          <td>{{ item.dosage }}</td><td>{{ item.frequency }}</td><td>{{ item.duration_days }} días</td>
+          <td><p-tag [value]="item.is_active ? 'Activa' : 'Inactiva'" [severity]="item.is_active ? 'success' : 'secondary'" /></td>
+          <td class="text-right">
+            <button pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar prescripción" (click)="editPrescription(item)"></button>
+            <button pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Eliminar prescripción" (click)="removePrescription(item)"></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage><tr><td colspan="7" class="py-6 text-center text-slate-400">No hay prescripciones registradas.</td></tr></ng-template>
+    </p-table>
+  </section>
+
+  <section class="space-y-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-semibold text-white">Aplicaciones de vacunas</h2>
+        <p class="text-sm text-slate-400">Historial de aplicaciones y lote utilizado.</p>
+      </div>
+      <button pButton type="button" severity="success" (click)="openVaccineApplication()" [disabled]="consultations().length === 0 || availableBatches().length === 0">
+        <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Registrar aplicación</span>
+      </button>
+    </div>
+    @if (availableBatches().length === 0 && !loading()) {
+      <p-message severity="warn" styleClass="w-full">No hay lotes activos, vigentes y con existencias disponibles para aplicar.</p-message>
+    }
+    <p-table [value]="vaccineApplications()" [loading]="loading()" dataKey="id" [paginator]="vaccineApplications().length > 10" [rows]="10">
+      <ng-template #header>
+        <tr><th>Vacuna aplicada</th><th>Consulta / mascota</th><th>Lote</th><th>Dosis</th><th>Fecha</th><th>Notas</th></tr>
+      </ng-template>
+      <ng-template #body let-item>
+        <tr>
+          <td><p class="font-medium text-white">{{ item.name }}</p><p class="text-xs text-slate-400">{{ item.description || '—' }}</p></td>
+          <td><p>{{ consultationLabel(item.consultation) }}</p><p class="text-xs text-slate-400">{{ petNameForConsultation(item.consultation) }}</p></td>
+          <td>{{ batchLabel(item.vaccine_batch) }}</td>
+          <td>{{ item.dosage_ml }} ml</td>
+          <td>{{ item.created_at ? (item.created_at | date:'short') : '—' }}</td>
+          <td>{{ item.notes || '—' }}</td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage><tr><td colspan="6" class="py-6 text-center text-slate-400">No hay aplicaciones de vacunas registradas.</td></tr></ng-template>
+    </p-table>
+  </section>
+
+  <p-dialog [visible]="prescriptionDialog()" (visibleChange)="prescriptionDialog.set($event)" [header]="editingPrescription() ? 'Editar prescripción' : 'Nueva prescripción'" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-xl mx-4">
+    <div class="grid gap-4 py-2 sm:grid-cols-2">
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">
+        Consulta / mascota
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="prescriptionForm.consultation" required>
+          <option [ngValue]="0" disabled>Selecciona una consulta</option>
+          @for (consultation of consultations(); track consultation.id) {
+            <option [ngValue]="consultation.id">{{ consultationLabel(consultation.id) }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Medicamento
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="prescriptionForm.medication_name" required maxlength="150" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Dosis
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="prescriptionForm.dosage" required maxlength="100" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Frecuencia
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="prescriptionForm.frequency" required maxlength="100" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Duración (días)
+        <input type="number" min="1" class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="prescriptionForm.duration_days" required />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Estado
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="prescriptionForm.is_active">
+          <option [ngValue]="true">Activa</option><option [ngValue]="false">Inactiva</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Indicaciones
+        <textarea class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="prescriptionForm.description" rows="2"></textarea>
+      </label>
+    </div>
+    <ng-template #footer>
+      <button pButton type="button" severity="secondary" text (click)="prescriptionDialog.set(false)">Cancelar</button>
+      <button pButton type="button" severity="success" [disabled]="saving() || !prescriptionForm.consultation || !prescriptionForm.medication_name.trim() || !prescriptionForm.dosage.trim() || !prescriptionForm.frequency.trim() || prescriptionForm.duration_days < 1" (click)="savePrescription()">
+        {{ saving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </ng-template>
+  </p-dialog>
+
+  <p-dialog [visible]="vaccineDialog()" (visibleChange)="vaccineDialog.set($event)" header="Registrar aplicación de vacuna" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-xl mx-4">
+    <div class="grid gap-4 py-2 sm:grid-cols-2">
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Consulta / mascota
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.consultation" required>
+          <option [ngValue]="0" disabled>Selecciona una consulta</option>
+          @for (consultation of consultations(); track consultation.id) {
+            <option [ngValue]="consultation.id">{{ consultationLabel(consultation.id) }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Lote disponible
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.vaccine_batch" required>
+          <option [ngValue]="0" disabled>Selecciona un lote</option>
+          @for (batch of availableBatches(); track batch.id) {
+            <option [ngValue]="batch.id">{{ vaccineName(batch.vaccine) }} · {{ batch.name }} · #{{ batch.batch_number }} · {{ batch.stock_quantity }} dosis · vence {{ batch.expiration_date }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Nombre de vacuna aplicada
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.name" required maxlength="100" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Dosis (ml)
+        <input type="number" min="0.01" step="0.01" class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.dosage_ml" required />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Descripción
+        <textarea class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.description" rows="2"></textarea>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Notas
+        <textarea class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.notes" rows="2"></textarea>
+      </label>
+    </div>
+    <ng-template #footer>
+      <button pButton type="button" severity="secondary" text (click)="vaccineDialog.set(false)">Cancelar</button>
+      <button pButton type="button" severity="success" [disabled]="saving() || !vaccineForm.consultation || !vaccineForm.vaccine_batch || !vaccineForm.name.trim()" (click)="saveVaccineApplication()">
+        {{ saving() ? 'Guardando…' : 'Registrar aplicación' }}
+      </button>
+    </ng-template>
+  </p-dialog>
+</div>

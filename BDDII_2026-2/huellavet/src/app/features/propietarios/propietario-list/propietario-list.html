@@ -1,4 +1,4 @@
-<app-page-header title="Registro de Owners" subtitle="La baja es lógica: el propietario queda inactivo.">
+<app-page-header title="Registro de Owners" subtitle="Administra propietarios activos e inactivos. La baja conserva su historial.">
   <p-tag [value]="rows().length + ' owners'" severity="info" [rounded]="true" />
   <button pButton type="button" severity="success" (click)="openCreate()">
     <i pButtonIcon class="pi pi-user-plus"></i>
@@ -19,15 +19,27 @@
   [rows]="10"
 >
   <ng-template #caption>
-    <input
-      pInputText
-      type="search"
-      class="w-full bg-slate-800 text-white border-slate-600"
-      aria-label="Buscar owners"
-      placeholder="Buscar por nombre, documento, email o teléfono..."
-      [value]="filter()"
-      (input)="filter.set($any($event.target).value)"
-    />
+    <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <input
+        pInputText
+        type="search"
+        class="w-full bg-slate-800 text-white border-slate-600"
+        aria-label="Buscar owners"
+        placeholder="Buscar por nombre, documento, email, teléfono o dirección..."
+        [value]="filter()"
+        (input)="filter.set($any($event.target).value)"
+      />
+      <select
+        class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-white sm:w-auto"
+        aria-label="Filtrar por estado"
+        [value]="statusFilter()"
+        (change)="statusFilter.set($any($event.target).value)"
+      >
+        <option value="all">Todos los estados</option>
+        <option value="active">Activos</option>
+        <option value="inactive">Inactivos</option>
+      </select>
+    </div>
   </ng-template>
 
   <ng-template #header>
@@ -86,6 +98,30 @@
           [disabled]="propietario.status === 'inactive'"
           (click)="remove(propietario)"
         ></button>
+        @if (propietario.status === 'inactive') {
+          <button
+            pButton
+            type="button"
+            text
+            rounded
+            severity="success"
+            icon="pi pi-refresh"
+            aria-label="Reactivar propietario"
+            pTooltip="Reactivar"
+            (click)="reactivate(propietario)"
+          ></button>
+          <button
+            pButton
+            type="button"
+            text
+            rounded
+            severity="danger"
+            icon="pi pi-times"
+            aria-label="Eliminar permanentemente al propietario"
+            pTooltip="Eliminar permanentemente"
+            (click)="removePermanently(propietario)"
+          ></button>
+        }
       </td>
     </tr>
   </ng-template>
@@ -93,11 +129,11 @@
   <ng-template #emptymessage>
     <tr>
       <td colspan="5">
-        @if (filter()) {
+        @if (filter() || statusFilter() !== 'all') {
           <app-empty-state
             icon="pi pi-search"
             title="Sin coincidencias"
-            message="Ningún propietario coincide con el filtro ingresado."
+            message="Ningún propietario coincide con los filtros seleccionados."
           />
         } @else {
           <app-empty-state

@@ -26,22 +26,22 @@ describe('ProductTypeApi', () => {
 
   afterEach(() => http.verify());
 
-  it('debe llamar a /api/vaccines/?status=active con barra final', () => {
-    expect(environment.apiUrl.endsWith('/api')).toBe(true);
+  it('debe llamar a /api/v1/product-types/?status=active con barra final', () => {
+    expect(environment.apiUrl.endsWith('/api/v1')).toBe(true);
 
     let result: ProductType[] | undefined;
     api.list('active').subscribe((data) => (result = data));
 
-    const req = http.expectOne('http://localhost:8000/api/vaccines/?status=active');
+    const req = http.expectOne('http://localhost:8000/api/v1/product-types/?status=active');
     expect(req.request.method).toBe('GET');
     req.flush([MOCK_TYPE]);
 
     expect(result).toEqual([MOCK_TYPE]);
   });
 
-  it('debe enviar la baja lógica mediante DELETE respondiendo 204', () => {
+  it('debe enviar la baja lógica del tipo mediante DELETE respondiendo 204', () => {
     api.remove(1).subscribe();
-    const req = http.expectOne('http://localhost:8000/api/vaccines/1/');
+    const req = http.expectOne('http://localhost:8000/api/v1/product-types/1/');
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });

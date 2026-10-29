@@ -2,18 +2,18 @@
   <div class="grid gap-4 sm:grid-cols-2">
     <div class="flex flex-col gap-2">
       <label for="p-type" class="text-sm font-semibold text-slate-200">
-        Tipo de Producto / Servicio <span class="text-red-500">*</span>
+        Categoría del insumo <span class="text-red-500">*</span>
       </label>
-      <p-select
+      <select
         id="p-type"
         formControlName="productTypeId"
-        [options]="types()"
-        optionLabel="name"
-        optionValue="id"
-        placeholder="Selecciona tipo"
-        appendTo="body"
-        styleClass="w-full bg-slate-800 text-white border-slate-600"
-      />
+        class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+      >
+        <option [ngValue]="null" disabled>Selecciona una categoría</option>
+        @for (type of types(); track type.id) {
+          <option [ngValue]="type.id">{{ type.name }}</option>
+        }
+      </select>
       @if (form.controls.productTypeId.touched && form.controls.productTypeId.invalid) {
         <p-message severity="error" size="small" variant="simple">El tipo es obligatorio.</p-message>
       }
@@ -32,7 +32,7 @@
         autocomplete="off"
       />
       @if (form.controls.brand.touched && form.controls.brand.invalid) {
-        <p-message severity="error" size="small" variant="simple">La marca es obligatoria.</p-message>
+        <p-message severity="error" size="small" variant="simple">La marca o laboratorio es obligatorio.</p-message>
       }
     </div>
   </div>
@@ -51,21 +51,38 @@
     />
     @if (form.controls.name.touched && form.controls.name.invalid) {
       <p-message severity="error" size="small" variant="simple">
-        El nombre debe tener entre 2 y 120 caracteres.
+        El nombre debe tener entre 2 y 120 caracteres y no puede contener solo espacios.
       </p-message>
+    }
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="p-description" class="text-sm font-semibold text-slate-200">Presentación / descripción</label>
+    <input
+      id="p-description"
+      pInputText
+      formControlName="description"
+      class="w-full bg-slate-800 text-white border-slate-600"
+      placeholder="Ej. Frasco 100 ml, caja x 10 tabletas"
+      maxlength="255"
+    />
+    @if (form.controls.description.touched && form.controls.description.invalid) {
+      <p-message severity="error" size="small" variant="simple">Máximo 255 caracteres.</p-message>
     }
   </div>
 
   <div class="grid gap-4 sm:grid-cols-3">
     <div class="flex flex-col gap-2">
       <label for="p-price" class="text-sm font-semibold text-slate-200">
-        Precio ($) <span class="text-red-500">*</span>
+        Precio de venta (COP) <span class="text-red-500">*</span>
       </label>
       <p-inputNumber
         id="p-price"
         formControlName="price"
-        mode="decimal"
-        [minFractionDigits]="2"
+        mode="currency"
+        currency="COP"
+        locale="es-CO"
+        [minFractionDigits]="0"
         [maxFractionDigits]="2"
         [min]="0.01"
         styleClass="w-full bg-slate-800 text-white border-slate-600"
@@ -76,21 +93,25 @@
     </div>
 
     <div class="flex flex-col gap-2">
-      <label for="p-minStock" class="text-sm font-semibold text-slate-200">Stock Mínimo</label>
+      <label for="p-minStock" class="text-sm font-semibold text-slate-200">Alerta de stock bajo</label>
       <p-inputNumber
         id="p-minStock"
         formControlName="minStock"
         [min]="0"
+        [minFractionDigits]="0"
+        [maxFractionDigits]="0"
         styleClass="w-full bg-slate-800 text-white border-slate-600"
       />
     </div>
 
     <div class="flex flex-col gap-2">
-      <label for="p-quantity" class="text-sm font-semibold text-slate-200">Existencias</label>
+      <label for="p-quantity" class="text-sm font-semibold text-slate-200">Existencias (unidades)</label>
       <p-inputNumber
         id="p-quantity"
         formControlName="quantity"
         [min]="0"
+        [minFractionDigits]="0"
+        [maxFractionDigits]="0"
         styleClass="w-full bg-slate-800 text-white border-slate-600"
       />
     </div>

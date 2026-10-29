@@ -6,6 +6,7 @@ export interface Product extends Timestamps {
   productTypeName?: string;
   name: string;
   brand: string;
+  description: string | null;
   price: Money;
   minStock: number;
   quantity: number;
@@ -16,6 +17,7 @@ export interface ProductPayload {
   productTypeId: number;
   name: string;
   brand: string;
+  description: string | null;
   price: Money;
   minStock: number;
   quantity: number;

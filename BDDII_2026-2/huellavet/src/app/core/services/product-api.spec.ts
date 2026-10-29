@@ -11,6 +11,7 @@ const MOCK_PRODUCT: Product = {
   productTypeName: 'Medicamentos',
   name: 'Amoxicilina 250mg',
   brand: 'Zoetis',
+  description: 'Antibiótico',
   price: '15.50',
   minStock: 5,
   quantity: 20,
@@ -31,20 +32,31 @@ describe('ProductApi', () => {
 
   afterEach(() => http.verify());
 
-  it('debe llamar a /api/vaccines/available/ al consultar disponibles', () => {
+  it('debe consultar el catálogo real de productos', () => {
     let result: Product[] | undefined;
-    api.available().subscribe((data) => (result = data));
+    api.list().subscribe((data) => (result = data));
 
-    const req = http.expectOne('http://localhost:8000/api/vaccines/available/');
+    const req = http.expectOne('http://localhost:8000/api/v1/products/');
     expect(req.request.method).toBe('GET');
     req.flush([MOCK_PRODUCT]);
 
     expect(result).toEqual([MOCK_PRODUCT]);
   });
 
-  it('debe enviar la baja lógica mediante DELETE respondiendo 204', () => {
+  it('debe consultar productos con stock disponible en el endpoint de productos', () => {
+    let result: Product[] | undefined;
+    api.available().subscribe((data) => (result = data));
+
+    const req = http.expectOne('http://localhost:8000/api/v1/products/available/');
+    expect(req.request.method).toBe('GET');
+    req.flush([MOCK_PRODUCT]);
+
+    expect(result).toEqual([MOCK_PRODUCT]);
+  });
+
+  it('debe enviar la baja lógica de producto mediante DELETE respondiendo 204', () => {
     api.remove(1).subscribe();
-    const req = http.expectOne('http://localhost:8000/api/vaccines/1/');
+    const req = http.expectOne('http://localhost:8000/api/v1/products/1/');
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });

@@ -26,7 +26,7 @@ export class PropietarioForm {
 
   readonly form = this.fb.group({
     nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(150)]],
-    documento: ['', [Validators.maxLength(30)]],
+    documento: ['', [Validators.required, Validators.maxLength(30)]],
     telefono: ['', [Validators.pattern(/^[0-9+()\s-]{7,30}$/)]],
     email: ['', [Validators.email, Validators.maxLength(150)]],
     direccion: ['', [Validators.maxLength(255)]],

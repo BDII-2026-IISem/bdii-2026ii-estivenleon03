@@ -25,8 +25,11 @@ export class ProductTypeForm {
   private readonly fb = inject(NonNullableFormBuilder);
 
   readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
-    description: [''],
+    name: [
+      '',
+      [Validators.required, Validators.pattern(/\S/), Validators.minLength(2), Validators.maxLength(100)],
+    ],
+    description: ['', [Validators.maxLength(255)]],
   });
 
   constructor() {

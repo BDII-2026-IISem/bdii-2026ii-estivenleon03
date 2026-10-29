@@ -47,12 +47,23 @@ export class PropietarioList {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly filter = signal('');
+  readonly statusFilter = signal<'all' | 'active' | 'inactive'>('all');
   readonly dialogVisible = signal(false);
   readonly editing = signal<Propietario | null>(null);
   readonly resetKey = signal(0);
 
+  readonly statusRows = computed(() => {
+    const status = this.statusFilter();
+    return status === 'all' ? this.rows() : this.rows().filter((p) => p.status === status);
+  });
   readonly visibleRows = computed(() =>
-    filterRows(this.rows(), this.filter(), (p) => [p.nombre, p.email, p.telefono, p.documento])
+    filterRows(this.statusRows(), this.filter(), (p) => [
+      p.nombre,
+      p.email,
+      p.telefono,
+      p.documento,
+      p.direccion,
+    ])
   );
 
   constructor() {
@@ -122,6 +133,44 @@ export class PropietarioList {
             this.load();
           },
           error: (err: unknown) => this.notify.error('No se pudo dar de baja', toApiMessage(err)),
+        }),
+    });
+  }
+
+  reactivate(propietario: Propietario): void {
+    this.confirmation.confirm({
+      header: 'Reactivar propietario',
+      message: `¿Reactivar a ${propietario.nombre}? Volverá a estar disponible para nuevas gestiones.`,
+      icon: 'pi pi-refresh',
+      acceptLabel: 'Reactivar',
+      rejectLabel: 'Cancelar',
+      accept: () =>
+        this.api.update(propietario.id, { status: 'active' }).subscribe({
+          next: () => {
+            this.notify.success('Propietario reactivado');
+            this.load();
+          },
+          error: (err: unknown) =>
+            this.notify.error('No se pudo reactivar', toApiMessage(err)),
+        }),
+    });
+  }
+
+  removePermanently(propietario: Propietario): void {
+    this.confirmation.confirm({
+      header: 'Eliminar permanentemente',
+      message: `¿Eliminar permanentemente a ${propietario.nombre}? Esta acción no se puede deshacer y solo está permitida si no tiene mascotas asociadas. Si tiene mascotas, conserva el registro inactivo para mantener su historial.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Eliminar permanentemente',
+      rejectLabel: 'Cancelar',
+      accept: () =>
+        this.api.removePermanently(propietario.id).subscribe({
+          next: () => {
+            this.notify.warn('Propietario eliminado permanentemente');
+            this.load();
+          },
+          error: (err: unknown) =>
+            this.notify.error('No se pudo eliminar permanentemente', toApiMessage(err)),
         }),
     });
   }

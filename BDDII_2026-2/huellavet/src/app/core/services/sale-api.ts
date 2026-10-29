@@ -2,12 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Sale, SaleCreatePayload } from '../models/sale.model';
+import { Sale, SaleCreatePayload, SalePaymentCreatePayload } from '../models/sale.model';
 
 @Injectable({ providedIn: 'root' })
 export class SaleApi {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiUrl}/payments`;
+  private readonly base = `${environment.apiUrl}/sales`;
 
   list(): Observable<Sale[]> {
     return this.http.get<Sale[]>(`${this.base}/`);
@@ -19,6 +19,10 @@ export class SaleApi {
 
   create(payload: SaleCreatePayload): Observable<Sale> {
     return this.http.post<Sale>(`${this.base}/`, payload);
+  }
+
+  addPayment(id: number, payload: SalePaymentCreatePayload): Observable<Sale> {
+    return this.http.post<Sale>(`${this.base}/${id}/payments/`, payload);
   }
 
   voidSale(id: number): Observable<void> {

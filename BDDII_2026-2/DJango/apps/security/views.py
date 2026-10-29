@@ -7,6 +7,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import get_user_model
 
 from .models import Role, Permission, UserRole, RolePermission
+from .models import User as RBACUser
 from .serializers import (
     UserSerializer,
     RoleSerializer,
@@ -77,37 +78,26 @@ class RolePermissionViewSet(viewsets.ModelViewSet):
 @authentication_classes([JWTAuthentication])
 @permission_classes([permissions.IsAuthenticated])
 def user_permissions_view(request):
-    # Rutas exigidas en nav.config.ts desglosadas en method y path
-    paths = [
-        '/api/payments',
-        '/api/owners',
-        '/api/product-types',
-        '/api/vaccines',
-        '/api/users',
-        '/api/roles',
-        '/api/resources',
-        '/api/role-users',
-        '/api/resource-roles',
-        '/api/v1/payments',
-        '/api/v1/owners',
-        '/api/v1/product-types',
-        '/api/v1/vaccines',
-        '/api/v1/users',
-        '/api/v1/roles',
-        '/api/v1/resources',
-        '/api/v1/role-users',
-        '/api/v1/resource-roles',
-    ]
+    rbac_user = RBACUser.objects.filter(
+        email__iexact=request.user.email,
+        is_active=True,
+    ).first()
+    if rbac_user is None:
+        return Response({'permissions': []}, status=status.HTTP_200_OK)
 
-    effective_permissions = []
-    for path in paths:
-        for method in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']:
-            effective_permissions.append({
-                'method': method,
-                'path': path,
-                'roleId': 1,
-                'roleName': 'ADMIN'
-            })
+    role_ids = UserRole.objects.filter(user=rbac_user).values_list('role_id', flat=True)
+    role_permissions = RolePermission.objects.filter(
+        role_id__in=role_ids,
+    ).select_related('role', 'permission')
+    effective_permissions = [
+        {
+            'method': assignment.permission.http_method,
+            'path': assignment.permission.resource,
+            'roleId': assignment.role_id,
+            'roleName': assignment.role.name,
+        }
+        for assignment in role_permissions
+    ]
 
     return Response({
         'permissions': effective_permissions

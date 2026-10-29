@@ -12,12 +12,12 @@ export interface FlatSaleLine extends SaleItemLine {
 @Injectable({ providedIn: 'root' })
 export class ProductSaleApi {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiUrl}/payments`;
+  private readonly base = `${environment.apiUrl}/sales`;
 
   list(): Observable<FlatSaleLine[]> {
     return this.http.get<Sale[]>(`${this.base}/`).pipe(
-      map((payments) =>
-        payments.flatMap((s) =>
+      map((sales) =>
+        sales.flatMap((s) =>
           (s.items ?? []).map((item) => ({
             saleId: s.id,
             ...item,

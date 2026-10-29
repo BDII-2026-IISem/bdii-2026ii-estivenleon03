@@ -1,4 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { EffectivePermission } from '../models/auth.model';
 
 export interface UserProfile {
   id: number;
@@ -15,7 +16,7 @@ export interface UserSession {
   accessToken: string | null;
   refreshToken: string | null;
   roles: string[];
-  permissions: any[];
+  permissions: Array<EffectivePermission | string>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -40,14 +41,18 @@ export class SessionStore {
     const userObj = this.user();
     if (!userObj) return false;
     if (userObj.isSuperuser || userObj.isStaff) return true;
-    
+
     const perms = this.permissions();
-    if (!perms || !Array.isArray(perms)) return true;
-    
-    return perms.some((p) => {
-      if (!p) return false;
-      if (typeof p === 'string') return p === permission;
-      return p.name === permission || p.codename === permission;
+    const [method, ...pathParts] = permission.trim().split(/\s+/);
+    if (!method || pathParts.length === 0) return perms.includes(permission);
+    const requestedPath = normalizePermissionPath(pathParts.join(' '));
+
+    return perms.some((granted) => {
+      if (typeof granted === 'string') return granted === permission;
+      if (granted.method.toUpperCase() !== method.toUpperCase()) return false;
+
+      const grantedPath = normalizePermissionPath(granted.path);
+      return pathsMatch(grantedPath, requestedPath);
     });
   }
 
@@ -63,13 +68,15 @@ export class SessionStore {
     });
   }
 
-  setUser(user: UserProfile, permissions: any[] = [], roles: string[] = []): void {
+  setUser(user: UserProfile, permissions: EffectivePermission[] = [], roles: string[] = []): void {
     this.sessionState.update((current) => {
       const updated = {
         ...current,
         user,
-        permissions: permissions.length ? permissions : current.permissions,
-        roles: roles.length ? roles : current.roles,
+        permissions,
+        roles: roles.length
+          ? roles
+          : [...new Set(permissions.map(({ roleName }) => roleName).filter(Boolean))],
       };
       this.saveSession(updated);
       return updated;
@@ -147,4 +154,27 @@ export class SessionStore {
       };
     }
   }
+
+}
+
+function normalizePermissionPath(path: string): string {
+  const normalized = `/${path}`
+    .replace(/\/+/g, '/')
+    .replace(/\/$/, '')
+    .replace(/^\/api\/v1(?=\/|$)/, '/api');
+  return normalized || '/';
+}
+
+function pathsMatch(grantedPath: string, requestedPath: string): boolean {
+  const grantedSegments = grantedPath.split('/');
+  const requestedSegments = requestedPath.split('/');
+  return (
+    grantedSegments.length === requestedSegments.length &&
+    grantedSegments.every(
+      (segment, index) =>
+        segment.startsWith(':') ||
+        (segment.startsWith('<') && segment.endsWith('>')) ||
+        segment === requestedSegments[index]
+    )
+  );
 }

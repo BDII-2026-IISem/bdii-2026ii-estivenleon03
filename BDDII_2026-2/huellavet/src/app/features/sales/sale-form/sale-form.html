@@ -35,7 +35,7 @@
     </div>
 
     <div class="flex flex-col gap-2">
-      <label class="text-sm font-semibold text-slate-200">Descuento ($)</label>
+      <label class="text-sm font-semibold text-slate-200">Descuento (COP)</label>
       <p-inputNumber
         [(ngModel)]="discounts"
         mode="decimal"
@@ -44,6 +44,38 @@
         [min]="0"
         styleClass="w-full bg-slate-800 text-white border-slate-600"
       />
+    </div>
+
+    <div class="grid gap-4 border-t border-slate-700 pt-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-2">
+        <label for="sale-payment-method" class="text-sm font-semibold text-slate-200">Método de pago (si paga ahora)</label>
+        <select
+          id="sale-payment-method"
+          class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+          [(ngModel)]="paymentMethod"
+        >
+          <option value="CASH">Efectivo</option>
+          <option value="DEBIT_CARD">Tarjeta débito</option>
+          <option value="CREDIT_CARD">Tarjeta crédito</option>
+          <option value="TRANSFER">Transferencia</option>
+        </select>
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="sale-payment-amount" class="text-sm font-semibold text-slate-200">Abono inicial (COP; opcional)</label>
+        <p-inputNumber
+          id="sale-payment-amount"
+          [(ngModel)]="paymentAmount"
+          mode="currency"
+          currency="COP"
+          locale="es-CO"
+          [min]="0"
+          [max]="previewTotal()"
+          [minFractionDigits]="0"
+          [maxFractionDigits]="2"
+          styleClass="w-full bg-slate-800 text-white border-slate-600"
+        />
+        <p class="text-xs text-slate-400">Déjalo vacío si el pago se registrará después.</p>
+      </div>
     </div>
   </div>
 
@@ -93,9 +125,9 @@
       <ng-template #body let-line let-i="rowIndex">
         <tr>
           <td class="font-medium text-white">{{ line.productName }}</td>
-          <td class="text-right text-slate-300">{{ line.unitPrice | currency : 'USD' }}</td>
+          <td class="text-right text-slate-300">{{ line.unitPrice | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</td>
           <td class="text-center text-slate-300">{{ line.quantity }}</td>
-          <td class="text-right font-semibold text-emerald-400">{{ line.lineTotal | currency : 'USD' }}</td>
+          <td class="text-right font-semibold text-emerald-400">{{ line.lineTotal | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</td>
           <td class="text-right">
             <button
               pButton
@@ -121,10 +153,16 @@
 
   <div class="flex flex-col items-end border-t border-slate-700 pt-4 gap-1 text-right">
     <p class="text-sm text-slate-400">
-      Subtotal Borrador: <span class="font-semibold text-slate-200">{{ subtotal() | currency : 'USD' }}</span>
+      Subtotal Borrador: <span class="font-semibold text-slate-200">{{ subtotal() | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</span>
+    </p>
+    <p class="text-sm text-slate-400">
+      Descuento: <span class="font-semibold text-slate-200">{{ discounts() || 0 | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</span>
+    </p>
+    <p class="text-sm text-slate-400">
+      Impuesto estimado (19%): <span class="font-semibold text-slate-200">{{ previewTax() | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</span>
     </p>
     <p class="text-lg font-bold text-emerald-400">
-      Vista Previa Total: {{ previewTotal() | currency : 'USD' }}
+      Vista Previa Total: {{ previewTotal() | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}
     </p>
   </div>
 

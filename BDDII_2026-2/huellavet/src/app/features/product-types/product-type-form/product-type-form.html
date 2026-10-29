@@ -13,7 +13,7 @@
     />
     @if (form.controls.name.touched && form.controls.name.invalid) {
       <p-message severity="error" size="small" variant="simple">
-        El nombre es obligatorio y debe tener entre 2 y 100 caracteres.
+        El nombre debe tener entre 2 y 100 caracteres y no puede contener solo espacios.
       </p-message>
     }
   </div>
@@ -26,8 +26,14 @@
       formControlName="description"
       rows="3"
       placeholder="Descripción opcional del tipo o categoría..."
+      maxlength="255"
       class="w-full bg-slate-800 text-white border-slate-600"
     ></textarea>
+    @if (form.controls.description.touched && form.controls.description.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        La descripción puede tener máximo 255 caracteres.
+      </p-message>
+    }
   </div>
 
   <div class="flex justify-end gap-2 border-t border-slate-700 pt-4">

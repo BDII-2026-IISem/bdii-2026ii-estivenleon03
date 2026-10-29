@@ -8,7 +8,7 @@ import { ProductType, ProductTypePayload } from '../models/product-type.model';
 @Injectable({ providedIn: 'root' })
 export class ProductTypeApi {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiUrl}/vaccines`;
+  private readonly base = `${environment.apiUrl}/product-types`;
 
   list(status?: Status): Observable<ProductType[]> {
     const options = status ? { params: { status } } : {};
@@ -23,7 +23,10 @@ export class ProductTypeApi {
     return this.http.post<ProductType>(`${this.base}/`, payload);
   }
 
-  update(id: number, payload: Partial<ProductTypePayload>): Observable<ProductType> {
+  update(
+    id: number,
+    payload: Partial<ProductTypePayload> & { status?: Status },
+  ): Observable<ProductType> {
     return this.http.patch<ProductType>(`${this.base}/${id}/`, payload);
   }
 

@@ -9,8 +9,11 @@
 
   <div class="grid gap-4 sm:grid-cols-2">
     <div class="flex flex-col gap-2">
-      <label for="p-documento" class="text-sm font-semibold text-slate-200">Documento</label>
+      <label for="p-documento" class="text-sm font-semibold text-slate-200">Documento <span class="text-red-500">*</span></label>
       <input id="p-documento" pInputText formControlName="documento" class="w-full bg-slate-800 text-white border-slate-600" placeholder="Ej. 1098765432" />
+      @if (form.controls.documento.touched && form.controls.documento.invalid) {
+        <p-message severity="error" size="small" variant="simple">El documento es obligatorio y debe tener máximo 30 caracteres.</p-message>
+      }
     </div>
 
     <div class="flex flex-col gap-2">

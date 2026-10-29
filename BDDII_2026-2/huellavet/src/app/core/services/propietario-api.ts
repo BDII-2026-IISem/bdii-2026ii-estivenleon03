@@ -22,11 +22,18 @@ export class PropietarioApi {
     return this.http.post<Propietario>(`${this.base}/`, payload);
   }
 
-  update(id: number, payload: Partial<PropietarioPayload>): Observable<Propietario> {
+  update(
+    id: number,
+    payload: Partial<PropietarioPayload> & { status?: Status },
+  ): Observable<Propietario> {
     return this.http.patch<Propietario>(`${this.base}/${id}/`, payload);
   }
 
   remove(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}/`);
+  }
+
+  removePermanently(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}/permanent-delete/`);
   }
 }

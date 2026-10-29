@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import { Sale, SaleCreatePayload } from '../models/sale.model';
+import { Sale, SaleCreatePayload, SalePaymentCreatePayload } from '../models/sale.model';
 import { SaleApi } from './sale-api';
 
 const MOCK_SALE: Sale = {
@@ -40,18 +40,37 @@ describe('SaleApi', () => {
 
   afterEach(() => http.verify());
 
-  it('debe enviar POST /api/payments/ con clientId e items', () => {
+  it('debe enviar POST /api/v1/sales/ con cliente, items y pago opcional', () => {
     const payload: SaleCreatePayload = {
       clientId: 10,
       saleDate: '2026-10-28T10:00:00-05:00',
       discounts: '0.00',
       items: [{ productId: 5, quantity: 1 }],
+      paymentMethod: 'CASH',
+      paymentAmount: '119.00',
     };
 
     let result: Sale | undefined;
     api.create(payload).subscribe((res) => (result = res));
 
-    const req = http.expectOne('http://localhost:8000/api/payments/');
+    const req = http.expectOne('http://localhost:8000/api/v1/sales/');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush(MOCK_SALE);
+
+    expect(result).toEqual(MOCK_SALE);
+  });
+
+  it('debe registrar pagos posteriores contra una venta existente', () => {
+    const payload: SalePaymentCreatePayload = {
+      method: 'TRANSFER',
+      amount: '25.00',
+    };
+
+    let result: Sale | undefined;
+    api.addPayment(1, payload).subscribe((res) => (result = res));
+
+    const req = http.expectOne('http://localhost:8000/api/v1/sales/1/payments/');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(payload);
     req.flush(MOCK_SALE);

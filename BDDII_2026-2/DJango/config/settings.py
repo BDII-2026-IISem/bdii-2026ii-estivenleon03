@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     'apps.appointment',
     'apps.clinical',
     'apps.billing',
+    'apps.product',
+    'apps.sale',
 ]
 
 MIDDLEWARE = [

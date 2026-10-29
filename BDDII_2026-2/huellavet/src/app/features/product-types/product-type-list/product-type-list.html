@@ -1,5 +1,5 @@
 <app-page-header title="Tipos de Producto / Servicios" subtitle="Gestión de categorías y tipos de servicios veterinarios.">
-  <p-tag [value]="rows().length + ' activos'" severity="info" [rounded]="true" />
+  <p-tag [value]="activeCount() + ' activos'" severity="info" [rounded]="true" />
   <button pButton type="button" severity="success" (click)="openCreate()">
     <i pButtonIcon class="pi pi-plus"></i>
     <span pButtonLabel>Nuevo Tipo</span>
@@ -19,15 +19,27 @@
   [rows]="10"
 >
   <ng-template #caption>
-    <input
-      pInputText
-      type="search"
-      class="w-full bg-slate-800 text-white border-slate-600"
-      aria-label="Buscar tipos"
-      placeholder="Buscar por nombre o descripción..."
-      [value]="filter()"
-      (input)="filter.set($any($event.target).value)"
-    />
+    <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <input
+        pInputText
+        type="search"
+        class="w-full bg-slate-800 text-white border-slate-600"
+        aria-label="Buscar tipos"
+        placeholder="Buscar por nombre o descripción..."
+        [value]="filter()"
+        (input)="filter.set($any($event.target).value)"
+      />
+      <select
+        class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-white sm:w-auto"
+        aria-label="Filtrar por estado"
+        [value]="statusFilter()"
+        (change)="statusFilter.set($any($event.target).value)"
+      >
+        <option value="active">Activos</option>
+        <option value="inactive">Inactivos</option>
+        <option value="all">Todos los estados</option>
+      </select>
+    </div>
   </ng-template>
 
   <ng-template #header>
@@ -74,8 +86,22 @@
           icon="pi pi-trash"
           aria-label="Dar de baja al tipo"
           pTooltip="Dar de baja"
+          [disabled]="item.status === 'inactive'"
           (click)="remove(item)"
         ></button>
+        @if (item.status === 'inactive') {
+          <button
+            pButton
+            type="button"
+            text
+            rounded
+            severity="success"
+            icon="pi pi-refresh"
+            aria-label="Reactivar tipo"
+            pTooltip="Reactivar"
+            (click)="reactivate(item)"
+          ></button>
+        }
       </td>
     </tr>
   </ng-template>
@@ -83,11 +109,11 @@
   <ng-template #emptymessage>
     <tr>
       <td colspan="4">
-        @if (filter()) {
+        @if (filter() || statusFilter() !== 'active') {
           <app-empty-state
             icon="pi pi-search"
             title="Sin coincidencias"
-            message="Ningún tipo coincide con el término de búsqueda."
+            message="Ningún tipo coincide con los filtros seleccionados."
           />
         } @else {
           <app-empty-state

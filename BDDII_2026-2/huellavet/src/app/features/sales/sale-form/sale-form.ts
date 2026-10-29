@@ -9,7 +9,7 @@ import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { Propietario } from '../../../core/models/propietario.model';
 import { Product } from '../../../core/models/product.model';
-import { SaleCreatePayload } from '../../../core/models/sale.model';
+import { PaymentMethod, SaleCreatePayload } from '../../../core/models/sale.model';
 import { toIsoWithOffset } from '../../../core/utils/sale-date';
 
 export interface DraftLine {
@@ -51,6 +51,8 @@ export class SaleForm {
   readonly clientId = signal<number | null>(null);
   readonly saleDate = signal<Date>(new Date());
   readonly discounts = signal<number>(0);
+  readonly paymentMethod = signal<PaymentMethod>('CASH');
+  readonly paymentAmount = signal<number | null>(null);
   readonly selectedProductId = signal<number | null>(null);
   readonly inputQuantity = signal<number>(1);
 
@@ -61,9 +63,11 @@ export class SaleForm {
     this.lines().reduce((acc, l) => acc + l.lineTotal, 0)
   );
 
-  readonly previewTotal = computed(() =>
+  readonly discountedSubtotal = computed(() =>
     Math.max(0, this.subtotal() - (this.discounts() || 0))
   );
+  readonly previewTax = computed(() => Math.round(this.discountedSubtotal() * 0.19 * 100) / 100);
+  readonly previewTotal = computed(() => this.discountedSubtotal() + this.previewTax());
 
   constructor() {
     effect(() => {
@@ -71,6 +75,8 @@ export class SaleForm {
       this.clientId.set(null);
       this.saleDate.set(new Date());
       this.discounts.set(0);
+      this.paymentMethod.set('CASH');
+      this.paymentAmount.set(null);
       this.selectedProductId.set(null);
       this.inputQuantity.set(1);
       this.lines.set([]);
@@ -142,11 +148,28 @@ export class SaleForm {
       return;
     }
 
-    this.saved.emit({
+    if ((this.discounts() || 0) > this.subtotal()) {
+      this.draftError.set('El descuento no puede superar el subtotal de la venta.');
+      return;
+    }
+
+    const paymentAmount = this.paymentAmount();
+    if (paymentAmount !== null && (paymentAmount < 0 || paymentAmount > this.previewTotal())) {
+      this.draftError.set('El pago no puede ser negativo ni superar el total de la venta.');
+      return;
+    }
+
+    const payload: SaleCreatePayload = {
       clientId: this.clientId()!,
       saleDate: toIsoWithOffset(this.saleDate()),
       discounts: (this.discounts() || 0).toFixed(2),
       items: this.lines().map((l) => ({ productId: l.productId, quantity: l.quantity })),
-    });
+    };
+    if (paymentAmount !== null && paymentAmount > 0) {
+      payload.paymentMethod = this.paymentMethod();
+      payload.paymentAmount = paymentAmount.toFixed(2);
+    }
+
+    this.saved.emit(payload);
   }
 }

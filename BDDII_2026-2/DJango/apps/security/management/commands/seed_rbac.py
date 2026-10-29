@@ -1,7 +1,8 @@
-from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.core.management.base import BaseCommand, CommandError
 from django.urls import resolve
-from apps.common.status import RecordStatus
-from apps.security.models import Resource, ResourceRole, Role, RoleUser, User
+from apps.security.models import Permission, Role, RolePermission, User, UserRole
 
 class Command(BaseCommand):
     help = "Sincroniza las rutas del sistema en la matriz RBAC y concede permisos al rol admin."
@@ -14,119 +15,66 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        sample_endpoints = [
-            # Clients
-            ("GET", "/api/clients/"),
-            ("POST", "/api/clients/"),
-            ("GET", "/api/clients/1/"),
-            ("PUT", "/api/clients/1/"),
-            ("PATCH", "/api/clients/1/"),
-            ("DELETE", "/api/clients/1/"),
-            # Product Types
-            ("GET", "/api/product-types/"),
-            ("POST", "/api/product-types/"),
-            ("GET", "/api/product-types/1/"),
-            ("PUT", "/api/product-types/1/"),
-            ("PATCH", "/api/product-types/1/"),
-            ("DELETE", "/api/product-types/1/"),
-            # Products
-            ("GET", "/api/products/"),
-            ("POST", "/api/products/"),
-            ("GET", "/api/products/1/"),
-            ("PUT", "/api/products/1/"),
-            ("PATCH", "/api/products/1/"),
-            ("DELETE", "/api/products/1/"),
-            ("GET", "/api/products/available/"),
-            # Sales
-            ("GET", "/api/sales/"),
-            ("POST", "/api/sales/"),
-            ("GET", "/api/sales/1/"),
-            ("DELETE", "/api/sales/1/"),
-            # Users
-            ("GET", "/api/users/"),
-            ("POST", "/api/users/"),
-            ("GET", "/api/users/1/"),
-            ("PUT", "/api/users/1/"),
-            ("PATCH", "/api/users/1/"),
-            ("DELETE", "/api/users/1/"),
-            # Roles
-            ("GET", "/api/roles/"),
-            ("POST", "/api/roles/"),
-            ("GET", "/api/roles/1/"),
-            ("PUT", "/api/roles/1/"),
-            ("PATCH", "/api/roles/1/"),
-            ("DELETE", "/api/roles/1/"),
-            # RoleUsers
-            ("GET", "/api/role-users/"),
-            ("POST", "/api/role-users/"),
-            ("GET", "/api/role-users/1/"),
-            ("PUT", "/api/role-users/1/"),
-            ("PATCH", "/api/role-users/1/"),
-            ("DELETE", "/api/role-users/1/"),
-            # Resources
-            ("GET", "/api/resources/"),
-            ("POST", "/api/resources/"),
-            ("GET", "/api/resources/1/"),
-            ("PUT", "/api/resources/1/"),
-            ("PATCH", "/api/resources/1/"),
-            ("DELETE", "/api/resources/1/"),
-            # ResourceRoles
-            ("GET", "/api/resource-roles/"),
-            ("POST", "/api/resource-roles/"),
-            ("GET", "/api/resource-roles/1/"),
-            ("PUT", "/api/resource-roles/1/"),
-            ("PATCH", "/api/resource-roles/1/"),
-            ("DELETE", "/api/resource-roles/1/"),
-        ]
-
-        admin_role, _ = Role.objects.get_or_create(
-            name="admin",
-            defaults={"description": "Rol Administrador del Sistema", "status": RecordStatus.ACTIVE},
+        collections = (
+            "users", "roles", "permissions", "user-roles", "role-permissions",
+            "owners", "pets", "veterinarians", "appointments", "consultations",
+            "prescriptions", "vaccines", "vaccine-batches", "vaccine-applications",
+            "product-types", "products", "sales", "payments", "payment-audits",
         )
-        if admin_role.status != RecordStatus.ACTIVE:
-            admin_role.status = RecordStatus.ACTIVE
-            admin_role.save(update_fields=["status", "updated_at"])
-
-        count = 0
-        for method, path in sample_endpoints:
-            match = resolve(path)
-            route_pattern = match.route
-            resource, _ = Resource.objects.get_or_create(
-                method=method,
-                route=route_pattern,
-                defaults={
-                    "name": f"{method} {route_pattern}",
-                    "status": RecordStatus.ACTIVE,
-                },
+        sample_endpoints = []
+        for collection in collections:
+            endpoint = f"/api/v1/{collection}/"
+            sample_endpoints.extend((method, endpoint) for method in ("GET", "POST"))
+            sample_endpoints.extend(
+                (method, f"{endpoint}1/")
+                for method in ("GET", "PUT", "PATCH", "DELETE")
             )
-            if resource.status != RecordStatus.ACTIVE:
-                resource.status = RecordStatus.ACTIVE
-                resource.save(update_fields=["status", "updated_at"])
+        sample_endpoints.extend([
+            ("GET", "/api/v1/products/available/"),
+            ("POST", "/api/v1/sales/1/payments/"),
+        ])
 
-            rr, _ = ResourceRole.objects.get_or_create(
-                resource=resource,
-                role=admin_role,
-                defaults={"status": RecordStatus.ACTIVE},
+        with transaction.atomic():
+            admin_role, _ = Role.objects.get_or_create(
+                name="ADMIN",
+                defaults={"description": "Rol Administrador del Sistema"},
             )
-            if rr.status != RecordStatus.ACTIVE:
-                rr.status = RecordStatus.ACTIVE
-                rr.save(update_fields=["status", "updated_at"])
-            count += 1
-
-        username = options.get("username")
-        if username:
-            try:
-                user = User.objects.get(username=username)
-                ru, _ = RoleUser.objects.get_or_create(
-                    role=admin_role,
-                    user=user,
-                    defaults={"status": RecordStatus.ACTIVE},
+            count = 0
+            for method, path in sample_endpoints:
+                resolve(path)
+                segments = path.strip('/').split('/')
+                route_pattern = '/' + '/'.join(
+                    ':id' if segment == '1' else segment
+                    for segment in segments
                 )
-                if ru.status != RecordStatus.ACTIVE:
-                    ru.status = RecordStatus.ACTIVE
-                    ru.save(update_fields=["status", "updated_at"])
-                self.stdout.write(self.style.SUCCESS(f"Rol admin asignado al usuario {username}."))
-            except User.DoesNotExist:
-                self.stdout.write(self.style.ERROR(f"Usuario {username} no encontrado."))
+                permission, _ = Permission.objects.get_or_create(
+                    http_method=method,
+                    resource=route_pattern,
+                    defaults={"description": f"{method} {route_pattern}"},
+                )
+                RolePermission.objects.get_or_create(
+                    permission=permission,
+                    role=admin_role,
+                )
+                count += 1
 
-        self.stdout.write(self.style.SUCCESS(f"Recursos RBAC sincronizados. Total procesados: {count}."))
+            username = options.get("username")
+            if username:
+                auth_user = get_user_model().objects.filter(username=username).first()
+                if auth_user is None:
+                    raise CommandError(f"Usuario Django {username} no encontrado.")
+                rbac_user = (
+                    User.objects.filter(email__iexact=auth_user.email, is_active=True).first()
+                )
+                if rbac_user is None:
+                    raise CommandError(
+                        f"No existe un usuario RBAC activo asociado a {username}."
+                    )
+                UserRole.objects.get_or_create(user=rbac_user, role=admin_role)
+                self.stdout.write(self.style.SUCCESS(
+                    f"Rol ADMIN asignado al usuario {username}."
+                ))
+
+        self.stdout.write(self.style.SUCCESS(
+            f"Permisos RBAC sincronizados. Total procesados: {count}."
+        ))

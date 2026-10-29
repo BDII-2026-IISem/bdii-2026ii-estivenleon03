@@ -47,13 +47,19 @@ export class ProductTypeList {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly filter = signal('');
+  readonly statusFilter = signal<'all' | 'active' | 'inactive'>('active');
   readonly dialogVisible = signal(false);
   readonly editing = signal<ProductType | null>(null);
   readonly resetKey = signal(0);
 
+  readonly statusRows = computed(() => {
+    const status = this.statusFilter();
+    return status === 'all' ? this.rows() : this.rows().filter((pt) => pt.status === status);
+  });
   readonly visibleRows = computed(() =>
-    filterRows(this.rows(), this.filter(), (pt) => [pt.name, pt.description])
+    filterRows(this.statusRows(), this.filter(), (pt) => [pt.name, pt.description])
   );
+  readonly activeCount = computed(() => this.rows().filter((pt) => pt.status === 'active').length);
 
   constructor() {
     this.load();
@@ -62,7 +68,7 @@ export class ProductTypeList {
   load(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.api.list('active').subscribe({
+    this.api.list().subscribe({
       next: (data) => {
         this.rows.set(data);
         this.loading.set(false);
@@ -123,6 +129,25 @@ export class ProductTypeList {
           },
           error: (err: unknown) =>
             this.notify.error('No se pudo desactivar', toApiMessage(err)),
+        }),
+    });
+  }
+
+  reactivate(productType: ProductType): void {
+    this.confirmation.confirm({
+      header: 'Reactivar tipo',
+      message: `¿Reactivar «${productType.name}»? Volverá a estar disponible al registrar productos.`,
+      icon: 'pi pi-refresh',
+      acceptLabel: 'Reactivar',
+      rejectLabel: 'Cancelar',
+      accept: () =>
+        this.api.update(productType.id, { status: 'active' }).subscribe({
+          next: () => {
+            this.notify.success('Tipo de producto reactivado');
+            this.load();
+          },
+          error: (err: unknown) =>
+            this.notify.error('No se pudo reactivar', toApiMessage(err)),
         }),
     });
   }

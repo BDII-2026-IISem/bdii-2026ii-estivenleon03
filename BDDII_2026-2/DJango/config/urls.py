@@ -22,6 +22,8 @@ from apps.staff.views import VeterinarianViewSet
 from apps.appointment.views import AppointmentViewSet
 from apps.clinical.views import ConsultationViewSet, PrescriptionViewSet, VaccineViewSet, VaccineBatchViewSet, VaccineApplicationViewSet
 from apps.billing.views import PaymentViewSet, PaymentAuditViewSet
+from apps.product.views import ProductTypeViewSet, ProductViewSet
+from apps.sale.views import SaleViewSet
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -38,6 +40,9 @@ router.register(r'prescriptions', PrescriptionViewSet, basename='prescription')
 router.register(r'vaccines', VaccineViewSet, basename='vaccine')
 router.register(r'vaccine-batches', VaccineBatchViewSet, basename='vaccinebatch')
 router.register(r'vaccine-applications', VaccineApplicationViewSet, basename='vaccineapplication')
+router.register(r'product-types', ProductTypeViewSet, basename='producttype')
+router.register(r'products', ProductViewSet, basename='product')
+router.register(r'sales', SaleViewSet, basename='sale')
 router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'payment-audits', PaymentAuditViewSet, basename='paymentaudit')
 

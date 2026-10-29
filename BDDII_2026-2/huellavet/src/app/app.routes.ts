@@ -25,6 +25,22 @@ export const routes: Routes = [
         loadComponent: () => import('./features/propietarios/propietario-list/propietario-list').then((m: any) => m.PropietarioList || m.default),
       },
       {
+        path: 'mascotas',
+        loadComponent: () => import('./features/mascotas/mascotas.component').then((m) => m.MascotasComponent),
+      },
+      {
+        path: 'citas',
+        loadComponent: () => import('./features/appointments/appointment-list/appointment-list').then((m) => m.AppointmentList),
+      },
+      {
+        path: 'consultas',
+        loadComponent: () => import('./features/consultas/consultas.component').then((m) => m.ConsultasComponent),
+      },
+      {
+        path: 'tratamientos',
+        loadComponent: () => import('./features/clinical-treatments/clinical-treatments').then((m) => m.ClinicalTreatments),
+      },
+      {
         path: 'tipos-producto',
         loadComponent: () => import('./features/product-types/product-type-list/product-type-list').then((m: any) => m.ProductTypeList || m.default),
       },

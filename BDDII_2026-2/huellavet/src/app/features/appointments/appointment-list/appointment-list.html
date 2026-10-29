@@ -1,0 +1,108 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Gestión de citas</h1>
+      <p class="text-sm text-slate-400">Agenda veterinaria con pacientes y profesionales registrados.</p>
+    </div>
+    <button pButton type="button" severity="success" (click)="openCreate()" [disabled]="activePets().length === 0 || activeVeterinarians().length === 0">
+      <i pButtonIcon class="pi pi-calendar-plus"></i><span pButtonLabel>Nueva cita</span>
+    </button>
+  </div>
+
+  @if (error()) {
+    <p-message severity="error" styleClass="w-full">{{ error() }}</p-message>
+  }
+  @if (activePets().length === 0 || activeVeterinarians().length === 0) {
+    <p-message severity="warn" styleClass="w-full">Se necesita al menos una mascota activa y un veterinario para agendar citas.</p-message>
+  }
+
+  <p-table [value]="appointments()" [loading]="loading()" dataKey="id" [paginator]="appointments().length > 10" [rows]="10">
+    <ng-template #header>
+      <tr><th>ID</th><th>Mascota / propietario</th><th>Veterinario</th><th>Inicio</th><th>Fin</th><th>Motivo</th><th>Estado</th><th class="text-right">Acciones</th></tr>
+    </ng-template>
+    <ng-template #body let-item>
+      <tr>
+        <td>#{{ item.id }}</td>
+        <td>
+          <p class="font-medium text-white">{{ item.pet_details?.name || petName(item.pet) }}</p>
+          <p class="text-xs text-slate-400">{{ ownerNameForPet(item.pet) }}</p>
+        </td>
+        <td>{{ item.veterinarian_details?.name || veterinarianName(item.veterinarian) }}</td>
+        <td>{{ item.start_time | date:'short' }}</td>
+        <td>{{ item.end_time | date:'shortTime' }}</td>
+        <td>{{ item.reason }}</td>
+        <td><p-tag [value]="statusLabel(item.status)" [severity]="statusSeverity(item.status)" /></td>
+        <td class="text-right">
+          <button pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar cita" (click)="openEdit(item)"></button>
+          <button pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Eliminar cita" (click)="remove(item)"></button>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr><td colspan="8" class="py-8 text-center text-slate-400">No hay citas registradas.</td></tr>
+    </ng-template>
+  </p-table>
+
+  <p-dialog
+    [visible]="dialogVisible()"
+    (visibleChange)="dialogVisible.set($event)"
+    [header]="editing() ? 'Editar cita' : 'Nueva cita'"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    styleClass="w-full max-w-xl mx-4"
+  >
+    <div class="grid gap-4 py-2 sm:grid-cols-2">
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">
+        Mascota / propietario
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.pet" required>
+          <option [ngValue]="0" disabled>Selecciona una mascota</option>
+          @for (pet of activePets(); track pet.id) {
+            <option [ngValue]="pet.id">{{ pet.name }} · {{ ownerNameForPet(pet.id) }} · #{{ pet.id }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">
+        Veterinario
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.veterinarian" required>
+          <option [ngValue]="0" disabled>Selecciona un veterinario</option>
+          @for (vet of activeVeterinarians(); track vet.id) {
+            <option [ngValue]="vet.id">{{ vet.name }} · #{{ vet.id }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">
+        Inicio
+        <input type="datetime-local" class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.start_time" required />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">
+        Fin
+        <input type="datetime-local" class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.end_time" required />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">
+        Motivo
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.reason" required maxlength="255" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">
+        Estado
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.status">
+          @for (option of statuses; track option.value) {
+            <option [ngValue]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">
+        Registro activo
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.is_active">
+          <option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option>
+        </select>
+      </label>
+    </div>
+    <ng-template #footer>
+      <button pButton type="button" severity="secondary" text (click)="dialogVisible.set(false)">Cancelar</button>
+      <button pButton type="button" severity="success" [disabled]="saving() || !current.pet || !current.veterinarian || !current.reason.trim() || !current.start_time || !current.end_time" (click)="save()">
+        {{ saving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </ng-template>
+  </p-dialog>
+</div>

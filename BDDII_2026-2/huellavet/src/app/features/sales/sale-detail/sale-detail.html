@@ -18,8 +18,11 @@
   </app-page-header>
 
   <div class="grid gap-4 md:grid-cols-3 mb-6 mt-4">
-    <p-card header="Cliente / Propietario">
+    <p-card header="Propietario / Mascota">
       <p class="text-lg font-semibold text-white">{{ sale()!.clientName || 'Propietario #' + sale()!.client }}</p>
+      @if (sale()!.petName) {
+        <p class="mt-1 text-sm text-slate-300">Mascota: {{ sale()!.petName }}</p>
+      }
     </p-card>
 
     <p-card header="Fecha y Hora">
@@ -45,8 +48,8 @@
       <tr>
         <td class="font-medium text-white">{{ item.productName || 'Producto #' + item.productId }}</td>
         <td class="text-center text-slate-300">{{ item.quantity }}</td>
-        <td class="text-right text-slate-300">{{ item.unitPrice | currency : 'USD' }}</td>
-        <td class="text-right font-semibold text-emerald-400">{{ item.lineTotal | currency : 'USD' }}</td>
+        <td class="text-right text-slate-300">{{ item.unitPrice | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</td>
+        <td class="text-right font-semibold text-emerald-400">{{ item.lineTotal | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</td>
       </tr>
     </ng-template>
 
@@ -58,8 +61,77 @@
   </p-table>
 
   <div class="flex flex-col items-end border-t border-slate-700 mt-6 pt-4 text-right gap-1">
-    <p class="text-sm text-slate-400">Subtotal: {{ sale()!.subtotal | currency : 'USD' }}</p>
-    <p class="text-sm text-slate-400">Descuentos: {{ sale()!.discounts | currency : 'USD' }}</p>
-    <p class="text-2xl font-bold text-emerald-400 mt-1">Total: {{ sale()!.total | currency : 'USD' }}</p>
+    <p class="text-sm text-slate-400">Subtotal: {{ sale()!.subtotal | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</p>
+    <p class="text-sm text-slate-400">Descuentos: {{ sale()!.discounts | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</p>
+    <p class="text-2xl font-bold text-emerald-400 mt-1">Total: {{ sale()!.total | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</p>
+    <p class="text-sm text-slate-300">Pagado: {{ sale()!.paidAmount || '0.00' | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</p>
+    <p class="text-sm text-amber-400">Saldo pendiente: {{ sale()!.balanceDue ?? sale()!.total | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</p>
   </div>
+
+  @if (canAddPayment()) {
+    <section class="mt-6 grid gap-4 rounded-lg border border-slate-700 bg-slate-900 p-4 sm:grid-cols-3">
+      <div class="flex flex-col gap-2">
+        <label for="follow-up-payment-method" class="text-sm font-semibold text-slate-200">Método de pago</label>
+        <select
+          id="follow-up-payment-method"
+          class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+          [(ngModel)]="paymentMethod"
+        >
+          <option value="CASH">Efectivo</option>
+          <option value="DEBIT_CARD">Tarjeta débito</option>
+          <option value="CREDIT_CARD">Tarjeta crédito</option>
+          <option value="TRANSFER">Transferencia</option>
+        </select>
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="follow-up-payment-amount" class="text-sm font-semibold text-slate-200">Abono (COP)</label>
+        <input
+          id="follow-up-payment-amount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          [max]="balanceDue()"
+          [(ngModel)]="paymentAmount"
+          class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+        />
+      </div>
+      <div class="flex items-end">
+        <button
+          pButton
+          type="button"
+          severity="success"
+          [loading]="paymentSaving()"
+          [disabled]="paymentSaving()"
+          (click)="addPayment()"
+          class="w-full"
+        >
+          <i pButtonIcon class="pi pi-wallet"></i>
+          <span pButtonLabel>Registrar abono</span>
+        </button>
+      </div>
+    </section>
+  }
+
+  @if ((sale()!.payments?.length ?? 0) > 0) {
+    <section class="mt-6 border-t border-slate-700 pt-4">
+      <h2 class="mb-3 text-lg font-semibold text-white">Pagos registrados</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="text-slate-400">
+            <tr><th class="py-2">Fecha</th><th>Método</th><th>Estado</th><th class="text-right">Monto</th></tr>
+          </thead>
+          <tbody>
+            @for (payment of sale()!.payments; track payment.id) {
+              <tr class="border-t border-slate-700 text-slate-200">
+                <td class="py-2">{{ payment.paymentDate ? (payment.paymentDate | date:'medium') : '—' }}</td>
+                <td>{{ payment.method }}</td>
+                <td>{{ payment.status }}</td>
+                <td class="text-right">{{ payment.amount | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
 }
