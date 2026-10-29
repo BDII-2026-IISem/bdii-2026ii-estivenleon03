@@ -1,0 +1,64 @@
+<main class="min-h-screen bg-slate-50 p-6 font-sans">
+  <header class="mb-8 border-b pb-4">
+    <h1 class="text-3xl font-bold text-slate-800">HuellaVet — Panel de Control</h1>
+    <p class="text-slate-600">Gestión de mascotas, owners y registros de pago en tiempo real.</p>
+  </header>
+
+  <div class="grid grid-cols-1 gap-8">
+    <!-- Tabla de Mascotas -->
+    <p-card header="Mascotas Registradas">
+      <p-table [value]="pets" [paginator]="true" [rows]="5" responsiveLayout="scroll" styleClass="p-datatable-striped">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Especie</th>
+            <th>Raza</th>
+            <th>Propietario</th>
+            <th>Estado</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-pet>
+          <tr>
+            <td>{{ pet.id }}</td>
+            <td class="font-semibold text-slate-800">{{ pet.name }}</td>
+            <td>{{ pet.species }}</td>
+            <td>{{ pet.breed }}</td>
+            <td>{{ pet.owner_details.name }} ({{ pet.owner_details.phone }})</td>
+            <td>
+              <p-tag [value]="pet.is_active ? 'Activo' : 'Inactivo'" [severity]="pet.is_active ? 'success' : 'danger'"></p-tag>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-card>
+
+    <!-- Tabla de Pagos -->
+    <p-card header="Historial de Pagos">
+      <p-table [value]="payments" [paginator]="true" [rows]="5" responsiveLayout="scroll" styleClass="p-datatable-striped">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>ID</th>
+            <th>Referencia</th>
+            <th>Método</th>
+            <th>Monto</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-payment>
+          <tr>
+            <td>{{ payment.id }}</td>
+            <td>{{ payment.reference_type }} #{{ payment.reference_id }}</td>
+            <td>{{ payment.method }}</td>
+            <td class="font-bold text-slate-700">${{ payment.amount }}</td>
+            <td>{{ payment.payment_date | date:'short' }}</td>
+            <td>
+              <p-tag [value]="payment.status" [severity]="payment.status === 'PAID' ? 'success' : 'warn'"></p-tag>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-card>
+  </div>
+</main>

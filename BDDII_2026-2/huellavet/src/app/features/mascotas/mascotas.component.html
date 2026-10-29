@@ -1,0 +1,97 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Gestión de Pacientes / Mascotas</h1>
+      <p class="text-sm text-slate-400">Listado y administración de mascotas registradas en HuellaVet.</p>
+    </div>
+    <p-button label="Nueva Mascota" icon="pi pi-plus" severity="success" (onClick)="openNew()" />
+  </div>
+
+  <p-card>
+    <p-table [value]="pets" [paginator]="true" [rows]="5" responsiveLayout="scroll" styleClass="p-datatable-striped">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Especie</th>
+          <th>Raza</th>
+          <th>Edad</th>
+          <th>Propietario</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-pet>
+        <tr>
+          <td>{{ pet.id }}</td>
+          <td class="font-semibold text-emerald-400">{{ pet.name }}</td>
+          <td>{{ pet.species }}</td>
+          <td>{{ pet.breed }}</td>
+          <td>{{ pet.age }}</td>
+          <td>{{ pet.owner }} ({{ pet.phone }})</td>
+          <td>
+            <p-tag [value]="pet.is_active ? 'Activo' : 'Inactivo'" [severity]="pet.is_active ? 'success' : 'danger'"></p-tag>
+          </td>
+          <td>
+            <div class="flex gap-2">
+              <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" severity="info" (onClick)="editPet(pet)" />
+              <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger" (onClick)="deletePet(pet)" />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+  <!-- Modal para Crear / Editar Mascota -->
+  <p-dialog 
+    [(visible)]="petDialog" 
+    [style]="{ width: '450px' }" 
+    [header]="isEditMode ? 'Editar Mascota' : 'Nueva Mascota'" 
+    [modal]="true" 
+    styleClass="p-fluid">
+    
+    <ng-template pTemplate="content">
+      <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-1">
+          <label for="name" class="font-semibold text-slate-200">Nombre</label>
+          <input type="text" pInputText id="name" [(ngModel)]="currentPet.name" required autofocus class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1">
+            <label for="species" class="font-semibold text-slate-200">Especie</label>
+            <input type="text" pInputText id="species" [(ngModel)]="currentPet.species" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label for="breed" class="font-semibold text-slate-200">Raza</label>
+            <input type="text" pInputText id="breed" [(ngModel)]="currentPet.breed" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="age" class="font-semibold text-slate-200">Edad</label>
+          <input type="text" pInputText id="age" [(ngModel)]="currentPet.age" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1">
+            <label for="owner" class="font-semibold text-slate-200">Propietario</label>
+            <input type="text" pInputText id="owner" [(ngModel)]="currentPet.owner" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label for="phone" class="font-semibold text-slate-200">Teléfono</label>
+            <input type="text" pInputText id="phone" [(ngModel)]="currentPet.phone" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+          </div>
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="flex justify-end gap-2 pt-2">
+        <p-button label="Cancelar" icon="pi pi-times" [text]="true" severity="secondary" (onClick)="hideDialog()" />
+        <p-button label="Guardar" icon="pi pi-check" severity="success" (onClick)="savePet()" />
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

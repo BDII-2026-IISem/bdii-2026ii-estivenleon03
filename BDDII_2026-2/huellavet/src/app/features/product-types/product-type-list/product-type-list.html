@@ -1,0 +1,120 @@
+<app-page-header title="Tipos de Producto / Servicios" subtitle="Gestión de categorías y tipos de servicios veterinarios.">
+  <p-tag [value]="rows().length + ' activos'" severity="info" [rounded]="true" />
+  <button pButton type="button" severity="success" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i>
+    <span pButtonLabel>Nuevo Tipo</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-3xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full bg-slate-800 text-white border-slate-600"
+      aria-label="Buscar tipos"
+      placeholder="Buscar por nombre o descripción..."
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th pSortableColumn="name">
+        Nombre <i class="pi pi-sort-alt text-xs text-slate-400"></i>
+      </th>
+      <th>Descripción</th>
+      <th>Estado</th>
+      <th class="w-32 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-item>
+    <tr>
+      <td>
+        <p class="font-medium text-white">{{ item.name }}</p>
+        <p class="text-xs text-slate-400">#{{ item.id }}</p>
+      </td>
+      <td>
+        <p class="text-sm text-slate-300">{{ item.description || '—' }}</p>
+      </td>
+      <td>
+        <app-status-tag [status]="item.status" />
+      </td>
+      <td class="text-right">
+        <button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="info"
+          icon="pi pi-pencil"
+          aria-label="Editar tipo"
+          pTooltip="Editar"
+          (click)="openEdit(item)"
+        ></button>
+        <button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="danger"
+          icon="pi pi-trash"
+          aria-label="Dar de baja al tipo"
+          pTooltip="Dar de baja"
+          (click)="remove(item)"
+        ></button>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="4">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ningún tipo coincide con el término de búsqueda."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-tags"
+            title="Sin tipos activos"
+            message="Crea el primer tipo con el botón «Nuevo Tipo»."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [header]="editing() ? 'Editar Tipo de Producto' : 'Nuevo Tipo de Producto'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-2xl mx-4"
+>
+  <app-product-type-form
+    [productType]="editing()"
+    [saving]="saving()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

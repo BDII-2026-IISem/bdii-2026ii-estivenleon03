@@ -1,0 +1,63 @@
+<app-page-header title="Panel de Control General" subtitle="Resumen clínico e indicadores del día.">
+  <button pButton type="button" severity="secondary" outlined (click)="load()">
+    <i pButtonIcon class="pi pi-refresh"></i>
+    <span pButtonLabel>Recargar</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 my-6">
+  <p-card header="Ventas de Hoy">
+    <p class="text-3xl font-bold text-indigo-400">{{ todayPayments().length }}</p>
+  </p-card>
+
+  <p-card header="Total de Hoy">
+    <p class="text-3xl font-bold text-emerald-400">{{ todayTotal() | currency : 'USD' }}</p>
+  </p-card>
+
+  <p-card header="Insumos Bajo Mínimo">
+    <p class="text-3xl font-bold text-amber-400">{{ lowStockProducts().length }}</p>
+  </p-card>
+
+  <p-card header="Owners Activos">
+    <p class="text-3xl font-bold text-blue-400">{{ activeClientsCount() }}</p>
+  </p-card>
+</div>
+
+<div class="mt-8">
+  <h2 class="text-lg font-semibold text-white mb-4">Insumos y Medicamentos en Umbral Crítico</h2>
+  <p-table [value]="lowStockProducts()" tableStyleClass="min-w-3xl">
+    <ng-template #header>
+      <tr>
+        <th>Producto</th>
+        <th>Marca</th>
+        <th>Existencia Actual</th>
+        <th>Stock Mínimo</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-p>
+      <tr class="bg-amber-950/20">
+        <td class="font-medium text-white">{{ p.name }}</td>
+        <td class="text-slate-300">{{ p.brand }}</td>
+        <td class="font-bold text-amber-400">{{ p.quantity }}</td>
+        <td class="text-slate-300">{{ p.minStock }}</td>
+      </tr>
+    </ng-template>
+
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="4">
+          <app-empty-state
+            icon="pi pi-check-circle"
+            title="Inventario Saludable"
+            message="Ningún producto activo está por debajo del nivel mínimo."
+          />
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

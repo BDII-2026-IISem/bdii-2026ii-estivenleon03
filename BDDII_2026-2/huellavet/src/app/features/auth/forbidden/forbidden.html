@@ -1,0 +1,23 @@
+<div class="flex min-h-[70vh] items-center justify-center p-4">
+  <p-card styleClass="w-full max-w-lg bg-slate-800 text-white border border-slate-700 shadow-xl">
+    <div class="flex flex-col items-center text-center gap-4">
+      <div class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 text-red-400">
+        <i class="pi pi-lock text-3xl"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-white">Acceso Restringido</h1>
+      <p class="text-slate-300">Tu perfil no cuenta con la concesión requerida para consultar este recurso en la API.</p>
+
+      @if (permission) {
+        <div class="w-full rounded-xl bg-slate-900 p-4 text-left border border-slate-700">
+          <p class="text-xs font-semibold uppercase text-slate-400">Permiso Exigido</p>
+          <code class="text-sm font-mono text-emerald-400">{{ permission }}</code>
+        </div>
+      }
+
+      <a pButton routerLink="/dashboard" severity="success" class="mt-2">
+        <i pButtonIcon class="pi pi-home"></i>
+        <span pButtonLabel>Regresar al Panel</span>
+      </a>
+    </div>
+  </p-card>
+</div>

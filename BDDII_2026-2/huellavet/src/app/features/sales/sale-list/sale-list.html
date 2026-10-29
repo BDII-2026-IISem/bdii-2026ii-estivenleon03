@@ -1,0 +1,110 @@
+<app-page-header title="Registro de Ventas y Servicios" subtitle="Facturación de servicios e insumos clínicos.">
+  <p-tag [value]="totalAvailableStock() + ' unidades disponibles'" severity="info" [rounded]="true" />
+  <button pButton type="button" severity="success" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i>
+    <span pButtonLabel>Nueva Venta</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-3xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full bg-slate-800 text-white border-slate-600"
+      aria-label="Buscar ventas"
+      placeholder="Buscar por ID, cliente o total..."
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th pSortableColumn="id">
+        Venta # <i class="pi pi-sort-alt text-xs text-slate-400"></i>
+      </th>
+      <th>Cliente / Propietario</th>
+      <th pSortableColumn="saleDate">
+        Fecha <i class="pi pi-sort-alt text-xs text-slate-400"></i>
+      </th>
+      <th pSortableColumn="total">
+        Total <i class="pi pi-sort-alt text-xs text-slate-400"></i>
+      </th>
+      <th>Estado</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-sale>
+    <tr>
+      <td>
+        <a [routerLink]="['/ventas', sale.id]" class="font-semibold text-indigo-400 hover:underline">
+          #{{ sale.id }}
+        </a>
+      </td>
+      <td>
+        <p class="font-medium text-white">{{ getClientDisplayName(sale) }}</p>
+      </td>
+      <td>
+        <p class="text-sm text-slate-300">{{ sale.saleDate | date : 'medium' }}</p>
+      </td>
+      <td>
+        <p class="text-sm font-semibold text-emerald-400">{{ sale.total | currency : 'USD' }}</p>
+      </td>
+      <td>
+        <app-status-tag [status]="sale.status" />
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="5">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ninguna venta coincide con los términos de búsqueda."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-shopping-cart"
+            title="Sin ventas"
+            message="Registra la primera venta usando el botón «Nueva Venta»."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  header="Nueva Venta / Facturación"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-4xl mx-4"
+>
+  <app-sale-form
+    [clients]="clients()"
+    [products]="products()"
+    [saving]="saving()"
+    [serverError]="serverError()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

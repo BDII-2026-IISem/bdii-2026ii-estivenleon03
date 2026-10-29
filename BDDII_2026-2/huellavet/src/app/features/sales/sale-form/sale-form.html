@@ -1,0 +1,140 @@
+<div class="grid gap-4 text-slate-100">
+  @if (serverError()) {
+    <p-message severity="error" styleClass="w-full">{{ serverError() }}</p-message>
+  }
+  @if (draftError()) {
+    <p-message severity="warn" styleClass="w-full">{{ draftError() }}</p-message>
+  }
+
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold text-slate-200">
+        Cliente / Propietario <span class="text-red-500">*</span>
+      </label>
+      <p-select
+        [options]="clients()"
+        optionLabel="nombre"
+        optionValue="id"
+        placeholder="Selecciona cliente"
+        [(ngModel)]="clientId"
+        appendTo="body"
+        styleClass="w-full bg-slate-800 text-white border-slate-600"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold text-slate-200">Fecha de Venta</label>
+      <p-datePicker
+        [(ngModel)]="saleDate"
+        [showTime]="true"
+        hourFormat="24"
+        dateFormat="yy-mm-dd"
+        appendTo="body"
+        styleClass="w-full bg-slate-800 text-white border-slate-600"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold text-slate-200">Descuento ($)</label>
+      <p-inputNumber
+        [(ngModel)]="discounts"
+        mode="decimal"
+        [minFractionDigits]="2"
+        [maxFractionDigits]="2"
+        [min]="0"
+        styleClass="w-full bg-slate-800 text-white border-slate-600"
+      />
+    </div>
+  </div>
+
+  <div class="border-t border-slate-700 pt-4">
+    <h3 class="text-sm font-semibold text-slate-200 mb-2">Agregar Productos / Insumos</h3>
+    <div class="flex flex-col sm:flex-row gap-2 items-end">
+      <div class="flex-1 flex flex-col gap-1 w-full">
+        <label class="text-xs text-slate-400">Producto</label>
+        <p-select
+          [options]="products()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Selecciona un producto..."
+          [(ngModel)]="selectedProductId"
+          appendTo="body"
+          styleClass="w-full bg-slate-800 text-white border-slate-600"
+        />
+      </div>
+
+      <div class="w-full sm:w-32 flex flex-col gap-1">
+        <label class="text-xs text-slate-400">Cantidad</label>
+        <p-inputNumber
+          [(ngModel)]="inputQuantity"
+          [min]="1"
+          styleClass="w-full bg-slate-800 text-white border-slate-600"
+        />
+      </div>
+
+      <button pButton type="button" severity="info" (click)="addLine()">
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Agregar</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="border-t border-slate-700 pt-2">
+    <p-table [value]="lines()" tableStyleClass="w-full">
+      <ng-template #header>
+        <tr>
+          <th>Producto</th>
+          <th class="text-right">Precio Unit.</th>
+          <th class="text-center">Cant.</th>
+          <th class="text-right">Subtotal</th>
+          <th class="w-16"></th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-line let-i="rowIndex">
+        <tr>
+          <td class="font-medium text-white">{{ line.productName }}</td>
+          <td class="text-right text-slate-300">{{ line.unitPrice | currency : 'USD' }}</td>
+          <td class="text-center text-slate-300">{{ line.quantity }}</td>
+          <td class="text-right font-semibold text-emerald-400">{{ line.lineTotal | currency : 'USD' }}</td>
+          <td class="text-right">
+            <button
+              pButton
+              type="button"
+              text
+              rounded
+              severity="danger"
+              icon="pi pi-times"
+              (click)="removeLine(i)"
+            ></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage>
+        <tr>
+          <td colspan="5" class="text-center py-4 text-slate-400 text-sm">
+            Ningún producto agregado al borrador.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <div class="flex flex-col items-end border-t border-slate-700 pt-4 gap-1 text-right">
+    <p class="text-sm text-slate-400">
+      Subtotal Borrador: <span class="font-semibold text-slate-200">{{ subtotal() | currency : 'USD' }}</span>
+    </p>
+    <p class="text-lg font-bold text-emerald-400">
+      Vista Previa Total: {{ previewTotal() | currency : 'USD' }}
+    </p>
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-700 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="button" severity="success" [loading]="saving()" (click)="submit()">
+      <i pButtonIcon class="pi pi-check"></i>
+      <span pButtonLabel>Registrar Venta</span>
+    </button>
+  </div>
+</div>

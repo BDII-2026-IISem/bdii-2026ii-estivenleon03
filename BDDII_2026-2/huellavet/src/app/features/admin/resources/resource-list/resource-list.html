@@ -1,0 +1,82 @@
+<app-page-header title="Catálogo de Recursos" subtitle="Definición de endpoints protegidos.">
+  <button *appHasPermission="'POST /api/resources'" pButton type="button" severity="success" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i>
+    <span pButtonLabel>Nuevo Recurso</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table [value]="visibleRows()" [loading]="loading()" dataKey="id" tableStyleClass="min-w-3xl" [paginator]="visibleRows().length > 10" [rows]="10">
+  <ng-template #caption>
+    <input pInputText type="search" class="w-full bg-slate-800 text-white border-slate-600" aria-label="Buscar recursos" placeholder="Buscar por método o ruta..." [value]="filter()" (input)="filter.set($any($event.target).value)" />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th>Método</th>
+      <th>Ruta</th>
+      <th>Descripción</th>
+      <th>Estado</th>
+      <th class="w-28 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-row>
+    <tr>
+      <td>
+        <p-tag [value]="row.method" [severity]="methodSeverity(row.method)" [rounded]="true" />
+      </td>
+      <td>
+        <code class="text-xs text-emerald-400 font-mono">{{ row.path }}</code>
+      </td>
+      <td>
+        <p class="text-sm text-slate-300">{{ row.description || '—' }}</p>
+      </td>
+      <td>
+        <app-status-tag [status]="row.status" />
+      </td>
+      <td class="text-right">
+        <button *appHasPermission="'PATCH /api/resources/:id'" pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar" pTooltip="Editar" (click)="openEdit(row)"></button>
+        <button *appHasPermission="'DELETE /api/resources/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Desactivar" pTooltip="Desactivar" (click)="remove(row)"></button>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="5">
+        <app-empty-state icon="pi pi-server" title="Sin recursos" message="No se encontraron endpoints registrados." />
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog [visible]="dialogVisible()" (visibleChange)="dialogVisible.set($event)" [header]="editing() ? 'Editar recurso' : 'Nuevo recurso'" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-xl mx-4">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 text-slate-100">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-2">
+        <label for="res-method" class="text-sm font-semibold">Método HTTP</label>
+        <p-select inputId="res-method" formControlName="method" [options]="methods" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="res-path" class="text-sm font-semibold">Ruta Patrón</label>
+        <input id="res-path" pInputText formControlName="path" class="w-full bg-slate-800 text-white border-slate-600" placeholder="/api/owners/:id" />
+      </div>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="res-desc" class="text-sm font-semibold">Descripción</label>
+      <textarea id="res-desc" pTextarea formControlName="description" rows="3" class="w-full bg-slate-800 text-white border-slate-600"></textarea>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="res-status" class="text-sm font-semibold">Estado</label>
+      <p-select inputId="res-status" formControlName="status" [options]="statusOptions" optionLabel="label" optionValue="value" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
+    </div>
+    <div class="flex items-end justify-end gap-2 pt-4 border-t border-slate-700">
+      <button pButton type="button" severity="secondary" outlined (click)="dialogVisible.set(false)"><span pButtonLabel>Cancelar</span></button>
+      <button pButton type="submit" severity="success" [loading]="saving()"><span pButtonLabel>Guardar</span></button>
+    </div>
+  </form>
+</p-dialog>

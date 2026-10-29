@@ -1,0 +1,5 @@
+# 1. Alias para evitar que abra el visor de texto de Linux
+alias ng="PAGER=cat ng"
+
+# 2. Comprobar la versiPagernnn
+ng version=cat ng version

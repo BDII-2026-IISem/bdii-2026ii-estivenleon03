@@ -1,3 +1,125 @@
-from django.shortcuts import render
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.contrib.auth import get_user_model
 
-# Create your views here.
+from .models import Role, Permission, UserRole, RolePermission
+from .serializers import (
+    UserSerializer,
+    RoleSerializer,
+    PermissionSerializer,
+    UserRoleSerializer,
+    RolePermissionSerializer,
+)
+
+User = get_user_model()
+
+# --- LOGIN INTACTO ---
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].required = False
+        self.fields['password'].required = False
+
+    def validate(self, attrs):
+        data = self.initial_data
+        identifier = data.get("username") or data.get("email") or data.get("identifier")
+        password = data.get("password")
+
+        if not identifier or not password:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "Debe proporcionar usuario/correo y contraseña."})
+
+        if "@" in identifier:
+            try:
+                user_obj = User.objects.get(email=identifier)
+                identifier = user_obj.username
+            except User.DoesNotExist:
+                pass
+
+        attrs["username"] = identifier
+        attrs["password"] = password
+
+        return super().validate(attrs)
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+login_view = CustomTokenObtainPairView.as_view()
+
+# --- VIEWSETS DE SEGURIDAD ---
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+class RoleViewSet(viewsets.ModelViewSet):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+
+class PermissionViewSet(viewsets.ModelViewSet):
+    queryset = Permission.objects.all()
+    serializer_class = PermissionSerializer
+
+class UserRoleViewSet(viewsets.ModelViewSet):
+    queryset = UserRole.objects.all()
+    serializer_class = UserRoleSerializer
+
+class RolePermissionViewSet(viewsets.ModelViewSet):
+    queryset = RolePermission.objects.all()
+    serializer_class = RolePermissionSerializer
+
+
+# --- ENDPOINT DE PERMISOS FORMATO EffectivePermission ---
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([permissions.IsAuthenticated])
+def user_permissions_view(request):
+    # Rutas exigidas en nav.config.ts desglosadas en method y path
+    paths = [
+        '/api/payments',
+        '/api/owners',
+        '/api/product-types',
+        '/api/vaccines',
+        '/api/users',
+        '/api/roles',
+        '/api/resources',
+        '/api/role-users',
+        '/api/resource-roles',
+        '/api/v1/payments',
+        '/api/v1/owners',
+        '/api/v1/product-types',
+        '/api/v1/vaccines',
+        '/api/v1/users',
+        '/api/v1/roles',
+        '/api/v1/resources',
+        '/api/v1/role-users',
+        '/api/v1/resource-roles',
+    ]
+
+    effective_permissions = []
+    for path in paths:
+        for method in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']:
+            effective_permissions.append({
+                'method': method,
+                'path': path,
+                'roleId': 1,
+                'roleName': 'ADMIN'
+            })
+
+    return Response({
+        'permissions': effective_permissions
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([permissions.IsAuthenticated])
+def user_profile_view(request):
+    serializer = UserSerializer(request.user)
+    data = serializer.data
+    data['status'] = 'ACTIVE'
+    data['avatar'] = None
+    return Response(data, status=status.HTTP_200_OK)

@@ -1,0 +1,139 @@
+<app-page-header title="Catálogo de Productos y Medicamentos" subtitle="Gestión de insumos veterinarios e inventario.">
+  <p-tag [value]="lowStock().size + ' bajo el mínimo'" [severity]="lowStock().size > 0 ? 'warn' : 'info'" [rounded]="true" />
+  
+  <button pButton type="button" severity="secondary" outlined (click)="toggleAvailable()">
+    <i pButtonIcon [class]="onlyAvailable() ? 'pi pi-list' : 'pi pi-filter'"></i>
+    <span pButtonLabel>{{ onlyAvailable() ? 'Ver administración' : 'Solo disponibles' }}</span>
+  </button>
+
+  <button pButton type="button" severity="success" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i>
+    <span pButtonLabel>Nuevo Producto</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-3xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full bg-slate-800 text-white border-slate-600"
+      aria-label="Buscar productos"
+      placeholder="Buscar por nombre, marca o tipo..."
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th pSortableColumn="name">
+        Producto <i class="pi pi-sort-alt text-xs text-slate-400"></i>
+      </th>
+      <th>Tipo</th>
+      <th pSortableColumn="price">
+        Precio <i class="pi pi-sort-alt text-xs text-slate-400"></i>
+      </th>
+      <th>Existencias</th>
+      <th>Estado</th>
+      <th class="w-32 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-item>
+    <tr [class]="lowStock().has(item.id) ? 'bg-amber-950/40' : ''">
+      <td>
+        <p class="font-medium text-white">{{ item.name }}</p>
+        <p class="text-xs text-slate-400">{{ item.brand }} · #{{ item.id }}</p>
+      </td>
+      <td>
+        <p-tag [value]="item.productTypeName || 'Sin tipo'" severity="secondary" />
+      </td>
+      <td>
+        <p class="text-sm font-semibold text-emerald-400">{{ item.price | currency:'USD' }}</p>
+      </td>
+      <td>
+        <span class="text-sm font-semibold" [class.text-amber-400]="lowStock().has(item.id)">
+          {{ item.quantity }} / {{ item.minStock }}
+        </span>
+      </td>
+      <td>
+        <app-status-tag [status]="item.status" />
+      </td>
+      <td class="text-right">
+        <button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="info"
+          icon="pi pi-pencil"
+          aria-label="Editar producto"
+          pTooltip="Editar"
+          (click)="openEdit(item)"
+        ></button>
+        <button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="danger"
+          icon="pi pi-trash"
+          aria-label="Dar de baja al producto"
+          pTooltip="Dar de baja"
+          (click)="remove(item)"
+        ></button>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="6">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ningún producto coincide con la búsqueda."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-box"
+            title="Sin productos"
+            message="No hay productos registrados en este catálogo."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [header]="editing() ? 'Editar Producto' : 'Nuevo Producto'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-2xl mx-4"
+>
+  <app-product-form
+    [product]="editing()"
+    [types]="types()"
+    [saving]="saving()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

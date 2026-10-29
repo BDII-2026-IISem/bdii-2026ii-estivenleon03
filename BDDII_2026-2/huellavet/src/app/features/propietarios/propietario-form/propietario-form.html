@@ -1,0 +1,47 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 text-slate-100">
+  <div class="flex flex-col gap-2">
+    <label for="p-nombre" class="text-sm font-semibold text-slate-200">Nombre Completo <span class="text-red-500">*</span></label>
+    <input id="p-nombre" pInputText formControlName="nombre" class="w-full bg-slate-800 text-white border-slate-600" placeholder="Ej. Carlos Pérez" autocomplete="off" />
+    @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+      <p-message severity="error" size="small" variant="simple">El nombre es obligatorio y debe tener al menos 2 caracteres.</p-message>
+    }
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="p-documento" class="text-sm font-semibold text-slate-200">Documento</label>
+      <input id="p-documento" pInputText formControlName="documento" class="w-full bg-slate-800 text-white border-slate-600" placeholder="Ej. 1098765432" />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="p-telefono" class="text-sm font-semibold text-slate-200">Teléfono</label>
+      <input id="p-telefono" pInputText formControlName="telefono" class="w-full bg-slate-800 text-white border-slate-600" placeholder="3001234567" />
+      @if (form.controls.telefono.touched && form.controls.telefono.invalid) {
+        <p-message severity="error" size="small" variant="simple">Formato inválido (de 7 a 30 caracteres numéricos).</p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="p-email" class="text-sm font-semibold text-slate-200">Correo Electrónico</label>
+    <input id="p-email" type="email" pInputText formControlName="email" class="w-full bg-slate-800 text-white border-slate-600" placeholder="carlos@example.com" />
+    @if (form.controls.email.touched && form.controls.email.invalid) {
+      <p-message severity="error" size="small" variant="simple">Formato de correo electrónico inválido.</p-message>
+    }
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="p-direccion" class="text-sm font-semibold text-slate-200">Dirección</label>
+    <textarea id="p-direccion" pTextarea formControlName="direccion" rows="2" placeholder="Calle 10 # 20-30" class="w-full bg-slate-800 text-white border-slate-600"></textarea>
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-700 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" severity="success" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i>
+      <span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

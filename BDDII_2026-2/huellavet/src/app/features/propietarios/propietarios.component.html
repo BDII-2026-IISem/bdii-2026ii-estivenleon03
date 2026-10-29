@@ -1,0 +1,82 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Registro de Owners</h1>
+      <p class="text-sm text-slate-400">Administración de clientes y sus datos de contacto.</p>
+    </div>
+    <p-button label="Nuevo Propietario" icon="pi pi-user-plus" severity="success" (onClick)="openNew()" />
+  </div>
+
+  <p-card>
+    <p-table [value]="owners" [paginator]="true" [rows]="5" responsiveLayout="scroll" styleClass="p-datatable-striped">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>ID</th>
+          <th>Nombre Completo</th>
+          <th>Documento</th>
+          <th>Teléfono</th>
+          <th>Correo Electrónico</th>
+          <th>Mascotas</th>
+          <th>Acciones</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-owner>
+        <tr>
+          <td>{{ owner.id }}</td>
+          <td class="font-semibold text-white">{{ owner.name }}</td>
+          <td>{{ owner.document }}</td>
+          <td>{{ owner.phone }}</td>
+          <td>{{ owner.email }}</td>
+          <td><span class="rounded bg-slate-700 px-2 py-1 text-xs font-bold text-emerald-400">{{ owner.pets_count }}</span></td>
+          <td>
+            <div class="flex gap-2">
+              <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" severity="info" (onClick)="editOwner(owner)" />
+              <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger" (onClick)="deleteOwner(owner)" />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+  <!-- Modal para Crear / Editar Propietario -->
+  <p-dialog 
+    [(visible)]="ownerDialog" 
+    [style]="{ width: '450px' }" 
+    [header]="isEditMode ? 'Editar Propietario' : 'Nuevo Propietario'" 
+    [modal]="true" 
+    styleClass="p-fluid">
+    
+    <ng-template pTemplate="content">
+      <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-1">
+          <label for="name" class="font-semibold text-slate-200">Nombre Completo</label>
+          <input type="text" pInputText id="name" [(ngModel)]="currentOwner.name" required autofocus class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1">
+            <label for="document" class="font-semibold text-slate-200">Documento</label>
+            <input type="text" pInputText id="document" [(ngModel)]="currentOwner.document" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label for="phone" class="font-semibold text-slate-200">Teléfono</label>
+            <input type="text" pInputText id="phone" [(ngModel)]="currentOwner.phone" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="email" class="font-semibold text-slate-200">Correo Electrónico</label>
+          <input type="email" pInputText id="email" [(ngModel)]="currentOwner.email" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="flex justify-end gap-2 pt-2">
+        <p-button label="Cancelar" icon="pi pi-times" [text]="true" severity="secondary" (onClick)="hideDialog()" />
+        <p-button label="Guardar" icon="pi pi-check" severity="success" (onClick)="saveOwner()" />
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

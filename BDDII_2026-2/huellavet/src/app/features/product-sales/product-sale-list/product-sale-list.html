@@ -1,0 +1,74 @@
+<app-page-header title="Líneas de Venta" subtitle="Registro aplanado de ítems vendibles.">
+  <p-tag [value]="totalUnits() + ' unidades vendidas'" severity="info" [rounded]="true" />
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="saleId"
+  tableStyleClass="min-w-3xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full bg-slate-800 text-white border-slate-600"
+      aria-label="Buscar líneas de venta"
+      placeholder="Buscar por venta ID o producto..."
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th>Venta #</th>
+      <th>Producto</th>
+      <th class="text-center">Cantidad</th>
+      <th class="text-right">Precio Unitario</th>
+      <th class="text-right">Total Línea</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-line>
+    <tr>
+      <td>
+        <a [routerLink]="['/ventas', line.saleId]" class="font-semibold text-indigo-400 hover:underline">
+          #{{ line.saleId }}
+        </a>
+      </td>
+      <td>
+        <p class="font-medium text-white">{{ line.productName || 'Producto #' + line.productId }}</p>
+      </td>
+      <td class="text-center text-slate-300">{{ line.quantity }}</td>
+      <td class="text-right text-slate-300">{{ line.unitPrice | currency : 'USD' }}</td>
+      <td class="text-right font-semibold text-emerald-400">{{ line.lineTotal | currency : 'USD' }}</td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="5">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ninguna línea de venta coincide con la búsqueda."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-list"
+            title="Sin líneas de venta"
+            message="No hay transacciones registradas."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>

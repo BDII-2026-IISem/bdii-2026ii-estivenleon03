@@ -1,0 +1,53 @@
+<div class="flex min-h-screen items-center justify-center bg-slate-900 p-4">
+  <p-card styleClass="w-full max-w-md bg-slate-800 text-white border border-slate-700 shadow-xl">
+    <div class="flex flex-col items-center gap-2 mb-6 text-center">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 font-bold text-slate-950 text-xl">
+        HV
+      </div>
+      <h1 class="text-2xl font-bold text-white">HuellaVet</h1>
+      <p class="text-sm text-slate-400">Ingresa tus credenciales para acceder al sistema clínico</p>
+    </div>
+
+    @if (error()) {
+      <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
+      <div class="flex flex-col gap-2">
+        <label for="identifier" class="text-sm font-semibold text-slate-200">Usuario o Correo</label>
+        <input
+          id="identifier"
+          pInputText
+          formControlName="identifier"
+          class="w-full bg-slate-900 text-white border-slate-700"
+          placeholder="admin o usuario@huellavet.com"
+          autocomplete="username"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="password" class="text-sm font-semibold text-slate-200">Contraseña</label>
+        <p-password
+          id="password"
+          formControlName="password"
+          [toggleMask]="true"
+          [feedback]="false"
+          [fluid]="true"
+          styleClass="w-full"
+          inputStyleClass="w-full bg-slate-900 text-white border-slate-700"
+          placeholder="••••••••"
+        />
+      </div>
+
+      <button
+        pButton
+        type="submit"
+        severity="success"
+        class="mt-2 w-full"
+        [loading]="loading()"
+      >
+        <span pButtonLabel>Iniciar Sesión</span>
+      </button>
+    </form>
+  </p-card>
+</div>

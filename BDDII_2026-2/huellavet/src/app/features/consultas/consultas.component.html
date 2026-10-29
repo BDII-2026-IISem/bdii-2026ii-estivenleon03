@@ -1,0 +1,102 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Consultas Médicas</h1>
+      <p class="text-sm text-slate-400">Historial de atenciones clínicas y citas programadas.</p>
+    </div>
+    <p-button label="Nueva Consulta" icon="pi pi-calendar-plus" severity="success" (onClick)="openNew()" />
+  </div>
+
+  <p-card>
+    <p-table [value]="consultations" [paginator]="true" [rows]="5" responsiveLayout="scroll" styleClass="p-datatable-striped">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>ID</th>
+          <th>Mascota</th>
+          <th>Propietario</th>
+          <th>Motivo</th>
+          <th>Fecha</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td>{{ item.id }}</td>
+          <td class="font-semibold text-emerald-400">{{ item.pet_name }}</td>
+          <td>{{ item.owner_name }}</td>
+          <td>{{ item.reason }}</td>
+          <td>{{ item.date | date:'short' }}</td>
+          <td>
+            <p-tag [value]="item.status" [severity]="item.status === 'Completada' ? 'success' : 'warn'"></p-tag>
+          </td>
+          <td>
+            <div class="flex gap-2">
+              <p-button icon="pi pi-eye" [rounded]="true" [text]="true" severity="info" (onClick)="viewDetails(item)" />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+  <!-- Modal para Nueva Consulta -->
+  <p-dialog 
+    [(visible)]="consultationDialog" 
+    [style]="{ width: '450px' }" 
+    header="Agendar Nueva Consulta" 
+    [modal]="true" 
+    styleClass="p-fluid">
+    
+    <ng-template pTemplate="content">
+      <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-1">
+          <label for="pet_name" class="font-semibold text-slate-200">Mascota</label>
+          <input type="text" pInputText id="pet_name" [(ngModel)]="currentConsultation.pet_name" required autofocus class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="owner_name" class="font-semibold text-slate-200">Propietario</label>
+          <input type="text" pInputText id="owner_name" [(ngModel)]="currentConsultation.owner_name" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="reason" class="font-semibold text-slate-200">Motivo de Consulta</label>
+          <input type="text" pInputText id="reason" [(ngModel)]="currentConsultation.reason" class="p-2 border rounded bg-slate-800 text-white border-slate-600" />
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="flex justify-end gap-2 pt-2">
+        <p-button label="Cancelar" icon="pi pi-times" [text]="true" severity="secondary" (onClick)="hideDialog()" />
+        <p-button label="Guardar" icon="pi pi-check" severity="success" (onClick)="saveConsultation()" />
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Modal para Detalle de Consulta -->
+  <p-dialog 
+    [(visible)]="detailsDialog" 
+    [style]="{ width: '400px' }" 
+    header="Detalle de Consulta" 
+    [modal]="true">
+    
+    <ng-template pTemplate="content">
+      <div class="space-y-3 py-2 text-slate-200">
+        <p><strong>ID Consulta:</strong> {{ currentConsultation.id }}</p>
+        <p><strong>Mascota:</strong> {{ currentConsultation.pet_name }}</p>
+        <p><strong>Propietario:</strong> {{ currentConsultation.owner_name }}</p>
+        <p><strong>Motivo:</strong> {{ currentConsultation.reason }}</p>
+        <p><strong>Fecha:</strong> {{ currentConsultation.date | date:'medium' }}</p>
+        <p><strong>Estado:</strong> {{ currentConsultation.status }}</p>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="flex justify-end pt-2">
+        <p-button label="Cerrar" icon="pi pi-check" severity="secondary" (onClick)="hideDialog()" />
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

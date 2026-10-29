@@ -1,0 +1,108 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 text-slate-100">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="p-type" class="text-sm font-semibold text-slate-200">
+        Tipo de Producto / Servicio <span class="text-red-500">*</span>
+      </label>
+      <p-select
+        id="p-type"
+        formControlName="productTypeId"
+        [options]="types()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona tipo"
+        appendTo="body"
+        styleClass="w-full bg-slate-800 text-white border-slate-600"
+      />
+      @if (form.controls.productTypeId.touched && form.controls.productTypeId.invalid) {
+        <p-message severity="error" size="small" variant="simple">El tipo es obligatorio.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="p-brand" class="text-sm font-semibold text-slate-200">
+        Marca / Laboratorio <span class="text-red-500">*</span>
+      </label>
+      <input
+        id="p-brand"
+        pInputText
+        formControlName="brand"
+        class="w-full bg-slate-800 text-white border-slate-600"
+        placeholder="Ej. Zoetis, Bayer, Genérico"
+        autocomplete="off"
+      />
+      @if (form.controls.brand.touched && form.controls.brand.invalid) {
+        <p-message severity="error" size="small" variant="simple">La marca es obligatoria.</p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="p-name" class="text-sm font-semibold text-slate-200">
+      Nombre del Producto <span class="text-red-500">*</span>
+    </label>
+    <input
+      id="p-name"
+      pInputText
+      formControlName="name"
+      class="w-full bg-slate-800 text-white border-slate-600"
+      placeholder="Ej. Ampicilina 500mg"
+      autocomplete="off"
+    />
+    @if (form.controls.name.touched && form.controls.name.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        El nombre debe tener entre 2 y 120 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div class="flex flex-col gap-2">
+      <label for="p-price" class="text-sm font-semibold text-slate-200">
+        Precio ($) <span class="text-red-500">*</span>
+      </label>
+      <p-inputNumber
+        id="p-price"
+        formControlName="price"
+        mode="decimal"
+        [minFractionDigits]="2"
+        [maxFractionDigits]="2"
+        [min]="0.01"
+        styleClass="w-full bg-slate-800 text-white border-slate-600"
+      />
+      @if (form.controls.price.touched && form.controls.price.invalid) {
+        <p-message severity="error" size="small" variant="simple">Precio mínimo $0.01.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="p-minStock" class="text-sm font-semibold text-slate-200">Stock Mínimo</label>
+      <p-inputNumber
+        id="p-minStock"
+        formControlName="minStock"
+        [min]="0"
+        styleClass="w-full bg-slate-800 text-white border-slate-600"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="p-quantity" class="text-sm font-semibold text-slate-200">Existencias</label>
+      <p-inputNumber
+        id="p-quantity"
+        formControlName="quantity"
+        [min]="0"
+        styleClass="w-full bg-slate-800 text-white border-slate-600"
+      />
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-700 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" severity="success" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i>
+      <span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

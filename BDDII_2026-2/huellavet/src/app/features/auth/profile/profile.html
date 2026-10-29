@@ -1,0 +1,30 @@
+<app-page-header title="Mi Sesión" subtitle="Información del usuario autenticado y permisos asignados.">
+  <button pButton severity="secondary" outlined [loading]="refreshing()" (click)="refresh()">
+    <i pButtonIcon class="pi pi-refresh"></i>
+    <span pButtonLabel>Refrescar desde el backend</span>
+  </button>
+  <button pButton severity="danger" outlined (click)="logout()">
+    <i pButtonIcon class="pi pi-sign-out"></i>
+    <span pButtonLabel>Salir</span>
+  </button>
+</app-page-header>
+
+<div class="grid gap-6 md:grid-cols-2 mt-6">
+  <p-card header="Datos de Usuario">
+    <div class="flex flex-col gap-2">
+      <p class="text-slate-300"><strong class="text-white">Usuario:</strong> {{ session.user()?.username }}</p>
+      <p class="text-slate-300"><strong class="text-white">Correo:</strong> {{ session.user()?.email }}</p>
+      <p class="text-slate-300"><strong class="text-white">Total Permisos Efectivos:</strong> {{ session.permissionCount() }}</p>
+    </div>
+  </p-card>
+
+  <p-card header="Roles Asignados">
+    <div class="flex flex-wrap gap-2">
+      @for (role of session.roles(); track role) {
+        <p-tag [value]="role" severity="info" [rounded]="true" />
+      } @empty {
+        <p class="text-sm text-slate-400">Sin roles asignados.</p>
+      }
+    </div>
+  </p-card>
+</div>

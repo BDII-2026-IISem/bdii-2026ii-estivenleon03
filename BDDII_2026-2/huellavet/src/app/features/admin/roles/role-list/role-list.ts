@@ -1,0 +1,152 @@
+import { Component, computed, inject, signal } from '@angular/core';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ConfirmationService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { MessageModule } from 'primeng/message';
+import { SelectModule } from 'primeng/select';
+import { TableModule } from 'primeng/table';
+import { TextareaModule } from 'primeng/textarea';
+import { TooltipModule } from 'primeng/tooltip';
+import { STATUS_OPTIONS, Status } from '../../../../core/models/api.model';
+import { Role, RolePayload } from '../../../../core/models/role.model';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { toApiMessage } from '../../../../core/utils/to-api-message';
+import { filterRows } from '../../../../core/utils/filter-rows';
+import { EmptyState } from '../../../../shared/ui/empty-state/empty-state';
+import { PageHeader } from '../../../../shared/ui/page-header/page-header';
+import { StatusTag } from '../../../../shared/ui/status-tag/status-tag';
+import { HasPermission } from '../../../../shared/directives/has-permission';
+import { RoleApi } from '../role-api';
+
+@Component({
+  selector: 'app-role-list',
+  standalone: true,
+  imports: [
+    ButtonModule,
+    DialogModule,
+    EmptyState,
+    HasPermission,
+    InputTextModule,
+    MessageModule,
+    PageHeader,
+    ReactiveFormsModule,
+    SelectModule,
+    StatusTag,
+    TableModule,
+    TextareaModule,
+    TooltipModule,
+  ],
+  templateUrl: './role-list.html',
+  styleUrl: './role-list.css',
+  host: { class: 'block' },
+})
+export class RoleList {
+  private readonly api = inject(RoleApi);
+  private readonly notify = inject(NotificationService);
+  private readonly confirmation = inject(ConfirmationService);
+  private readonly fb = inject(NonNullableFormBuilder);
+
+  readonly statusOptions = STATUS_OPTIONS;
+  readonly rows = signal<Role[]>([]);
+  readonly loading = signal(true);
+  readonly saving = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly filter = signal('');
+  readonly dialogVisible = signal(false);
+  readonly editing = signal<Role | null>(null);
+
+  readonly form = this.fb.group({
+    name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(30)]],
+    description: [''],
+    status: ['active' as Status, [Validators.required]],
+  });
+
+  readonly visibleRows = computed(() =>
+    filterRows(this.rows(), this.filter(), (row) => [row.name, row.description])
+  );
+
+  constructor() {
+    this.load();
+  }
+
+  load(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.api.list().subscribe({
+      next: (data) => {
+        this.rows.set(data);
+        this.loading.set(false);
+      },
+      error: (err: unknown) => {
+        this.rows.set([]);
+        this.error.set(toApiMessage(err));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  openCreate(): void {
+    this.editing.set(null);
+    this.form.reset({ name: '', description: '', status: 'active' });
+    this.dialogVisible.set(true);
+  }
+
+  openEdit(row: Role): void {
+    this.editing.set(row);
+    this.form.reset({
+      name: row.name,
+      description: row.description ?? '',
+      status: row.status,
+    });
+    this.dialogVisible.set(true);
+  }
+
+  submit(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const val = this.form.getRawValue();
+    const payload: RolePayload = {
+      name: val.name.trim().toUpperCase(),
+      description: val.description.trim() || null,
+      status: val.status,
+    };
+    const current = this.editing();
+    this.saving.set(true);
+
+    const req$ = current ? this.api.update(current.id, payload) : this.api.create(payload);
+    req$.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.dialogVisible.set(false);
+        this.notify.success(current ? 'Rol actualizado' : 'Rol creado');
+        this.load();
+      },
+      error: (err: unknown) => {
+        this.saving.set(false);
+        this.notify.error('No se pudo guardar', toApiMessage(err));
+      },
+    });
+  }
+
+  remove(row: Role): void {
+    this.confirmation.confirm({
+      header: 'Dar de baja',
+      message: `¿Desactivar el rol «${row.name}»?`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Desactivar',
+      rejectLabel: 'Cancelar',
+      accept: () =>
+        this.api.remove(row.id).subscribe({
+          next: () => {
+            this.notify.warn('Rol desactivado');
+            this.load();
+          },
+          error: (err: unknown) => this.notify.error('No se pudo desactivar', toApiMessage(err)),
+        }),
+    });
+  }
+}
