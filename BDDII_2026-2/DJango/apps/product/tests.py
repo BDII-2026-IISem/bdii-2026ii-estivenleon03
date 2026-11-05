@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase
 from decimal import Decimal
@@ -10,6 +11,12 @@ class ProductInventoryApiTests(APITestCase):
     types_endpoint = '/api/v1/product-types/'
 
     def setUp(self):
+        admin = get_user_model().objects.create_superuser(
+            username='product-admin',
+            email='product-admin@example.com',
+            password='test-password',
+        )
+        self.client.force_authenticate(user=admin)
         self.product_type = ProductType.objects.create(name='Medicamentos')
 
     def product_payload(self, **overrides):

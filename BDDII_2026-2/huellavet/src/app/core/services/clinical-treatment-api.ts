@@ -6,9 +6,11 @@ import {
   Prescription,
   PrescriptionPayload,
   Vaccine,
+  VaccineBatchPayload,
   VaccineApplication,
   VaccineApplicationPayload,
   VaccineBatch,
+  VaccinePayload,
 } from '../models/clinical-treatment.model';
 
 @Injectable({ providedIn: 'root' })
@@ -36,8 +38,27 @@ export class ClinicalTreatmentApi {
     return this.http.get<Vaccine[]>(`${this.base}/vaccines/`);
   }
 
+  createVaccine(payload: VaccinePayload): Observable<Vaccine> {
+    return this.http.post<Vaccine>(`${this.base}/vaccines/`, payload);
+  }
+
+  updateVaccine(id: number, payload: Partial<VaccinePayload>): Observable<Vaccine> {
+    return this.http.patch<Vaccine>(`${this.base}/vaccines/${id}/`, payload);
+  }
+
   vaccineBatches(): Observable<VaccineBatch[]> {
     return this.http.get<VaccineBatch[]>(`${this.base}/vaccine-batches/`);
+  }
+
+  createVaccineBatch(payload: VaccineBatchPayload): Observable<VaccineBatch> {
+    return this.http.post<VaccineBatch>(`${this.base}/vaccine-batches/`, payload);
+  }
+
+  updateVaccineBatch(
+    id: number,
+    payload: Partial<VaccineBatchPayload>,
+  ): Observable<VaccineBatch> {
+    return this.http.patch<VaccineBatch>(`${this.base}/vaccine-batches/${id}/`, payload);
   }
 
   vaccineApplications(): Observable<VaccineApplication[]> {

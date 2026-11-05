@@ -25,10 +25,10 @@ export class PropietarioForm {
   private readonly fb = inject(NonNullableFormBuilder);
 
   readonly form = this.fb.group({
-    nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(150)]],
+    nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(120)]],
     documento: ['', [Validators.required, Validators.maxLength(30)]],
-    telefono: ['', [Validators.pattern(/^[0-9+()\s-]{7,30}$/)]],
-    email: ['', [Validators.email, Validators.maxLength(150)]],
+    telefono: ['', [Validators.pattern(/^[0-9+()\s-]{7,20}$/)]],
+    email: ['', [Validators.email, Validators.maxLength(120)]],
     direccion: ['', [Validators.maxLength(255)]],
   });
 

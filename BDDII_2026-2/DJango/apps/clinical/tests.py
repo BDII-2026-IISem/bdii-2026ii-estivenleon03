@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -20,8 +21,16 @@ class ClinicalApiTests(APITestCase):
     consultation_endpoint = '/api/v1/consultations/'
     prescription_endpoint = '/api/v1/prescriptions/'
     application_endpoint = '/api/v1/vaccine-applications/'
+    vaccine_endpoint = '/api/v1/vaccines/'
+    batch_endpoint = '/api/v1/vaccine-batches/'
 
     def setUp(self):
+        admin = get_user_model().objects.create_superuser(
+            username='clinical-admin',
+            email='clinical-admin@example.com',
+            password='test-password',
+        )
+        self.client.force_authenticate(user=admin)
         owner = Owner.objects.create(
             name='Clinical patient owner',
             doc_type='CC',
@@ -89,6 +98,31 @@ class ClinicalApiTests(APITestCase):
         consultation = Consultation.objects.get(pk=response.data['id'])
         self.assertIsNone(consultation.appointment_id)
 
+    def test_deleting_consultation_is_logical_and_preserves_prescriptions(self):
+        consultation = Consultation.objects.create(
+            pet=self.pet,
+            veterinarian=self.veterinarian,
+            symptoms='Symptoms',
+            diagnosis='Diagnosis',
+        )
+        prescription = Prescription.objects.create(
+            consultation=consultation,
+            medication_name='Medication',
+            dosage='1 tablet',
+            frequency='Daily',
+            duration_days=5,
+        )
+
+        response = self.client.delete(
+            f'{self.consultation_endpoint}{consultation.pk}/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        consultation.refresh_from_db()
+        prescription.refresh_from_db()
+        self.assertFalse(consultation.is_active)
+        self.assertEqual(prescription.consultation_id, consultation.pk)
+
     def test_prescription_requires_positive_duration_and_nonblank_dosage(self):
         consultation = Consultation.objects.create(
             pet=self.pet,
@@ -128,7 +162,7 @@ class ClinicalApiTests(APITestCase):
             {
                 'consultation': self.create_consultation().pk,
                 'vaccine_batch': batch.pk,
-                'name': 'Rabies vaccination',
+                'name': self.vaccine.name,
                 'dosage_ml': '1.00',
             },
             format='json',
@@ -140,6 +174,171 @@ class ClinicalApiTests(APITestCase):
         self.assertTrue(
             VaccineApplication.objects.filter(pk=response.data['id']).exists()
         )
+
+    def test_vaccine_application_rejects_non_positive_dose(self):
+        batch = self.create_batch(stock_quantity=2)
+
+        response = self.client.post(
+            self.application_endpoint,
+            {
+                'consultation': self.create_consultation().pk,
+                'vaccine_batch': batch.pk,
+                'name': 'Rabies vaccination',
+                'dosage_ml': '0',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('dosage_ml', response.data)
+        batch.refresh_from_db()
+        self.assertEqual(batch.stock_quantity, 2)
+
+    def test_vaccine_catalog_can_be_created_and_updated(self):
+        created = self.client.post(
+            self.vaccine_endpoint,
+            {'name': 'Distemper', 'description': 'Core vaccine'},
+            format='json',
+        )
+
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
+        vaccine = Vaccine.objects.get(pk=created.data['id'])
+        self.assertEqual(vaccine.name, 'Distemper')
+
+        updated = self.client.patch(
+            f'{self.vaccine_endpoint}{vaccine.pk}/',
+            {'is_active': False},
+            format='json',
+        )
+
+        self.assertEqual(updated.status_code, status.HTTP_200_OK, updated.data)
+        vaccine.refresh_from_db()
+        self.assertFalse(vaccine.is_active)
+
+    def test_vaccine_batch_can_be_created_and_stock_updated(self):
+        created = self.client.post(
+            self.batch_endpoint,
+            {
+                'vaccine': self.vaccine.pk,
+                'name': 'Batch A',
+                'batch_number': 'batch-api-test',
+                'expiration_date': str(timezone.localdate() + timedelta(days=30)),
+                'stock_quantity': 10,
+            },
+            format='json',
+        )
+
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED, created.data)
+        batch = VaccineBatch.objects.get(pk=created.data['id'])
+        self.assertEqual(batch.vaccine_id, self.vaccine.pk)
+        self.assertEqual(batch.stock_quantity, 10)
+
+        updated = self.client.patch(
+            f'{self.batch_endpoint}{batch.pk}/',
+            {'stock_quantity': 7},
+            format='json',
+        )
+
+        self.assertEqual(updated.status_code, status.HTTP_200_OK, updated.data)
+        batch.refresh_from_db()
+        self.assertEqual(batch.stock_quantity, 7)
+
+    def test_active_batch_requires_an_active_vaccine(self):
+        inactive_vaccine = Vaccine.objects.create(
+            name='Inactive vaccine',
+            is_active=False,
+        )
+        response = self.client.post(
+            self.batch_endpoint,
+            {
+                'vaccine': inactive_vaccine.pk,
+                'name': 'Inactive parent batch',
+                'batch_number': 'batch-inactive-parent',
+                'expiration_date': str(timezone.localdate() + timedelta(days=30)),
+                'stock_quantity': 5,
+                'is_active': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('vaccine', response.data)
+        self.assertFalse(
+            VaccineBatch.objects.filter(batch_number='batch-inactive-parent').exists()
+        )
+
+    def test_vaccine_cannot_be_deactivated_before_its_active_batches(self):
+        batch = self.create_batch()
+
+        response = self.client.patch(
+            f'{self.vaccine_endpoint}{self.vaccine.pk}/',
+            {'is_active': False},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('is_active', response.data)
+        self.vaccine.refresh_from_db()
+        batch.refresh_from_db()
+        self.assertTrue(self.vaccine.is_active)
+        self.assertTrue(batch.is_active)
+
+    def test_vaccine_application_requires_batch_vaccine_name(self):
+        batch = self.create_batch()
+        consultation = self.create_consultation()
+
+        mismatch = self.client.post(
+            self.application_endpoint,
+            {
+                'consultation': consultation.pk,
+                'vaccine_batch': batch.pk,
+                'name': 'Different vaccine',
+                'dosage_ml': '1.00',
+            },
+            format='json',
+        )
+        self.assertEqual(mismatch.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('name', mismatch.data)
+
+        derived = self.client.post(
+            self.application_endpoint,
+            {
+                'consultation': consultation.pk,
+                'vaccine_batch': batch.pk,
+                'dosage_ml': '1.00',
+            },
+            format='json',
+        )
+        self.assertEqual(derived.status_code, status.HTTP_201_CREATED, derived.data)
+        self.assertEqual(derived.data['name'], self.vaccine.name)
+        batch.refresh_from_db()
+        self.assertEqual(batch.stock_quantity, 0)
+
+    def test_vaccine_application_rejects_batch_of_inactive_parent_vaccine(self):
+        inactive_vaccine = Vaccine.objects.create(
+            name='Inactive parent',
+            is_active=False,
+        )
+        batch = self.create_batch(
+            vaccine=inactive_vaccine,
+            name='Legacy parent batch',
+            stock_quantity=3,
+        )
+
+        response = self.client.post(
+            self.application_endpoint,
+            {
+                'consultation': self.create_consultation().pk,
+                'vaccine_batch': batch.pk,
+                'dosage_ml': '1.00',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('vaccine_batch', response.data)
+        batch.refresh_from_db()
+        self.assertEqual(batch.stock_quantity, 3)
 
     def test_vaccine_application_rejects_inactive_expired_and_empty_batches(self):
         consultation = self.create_consultation()

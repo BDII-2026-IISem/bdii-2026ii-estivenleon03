@@ -1,17 +1,26 @@
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
 from apps.patient.models import Owner, Pet
 from apps.product.models import Product, ProductType
 from .models import Sale, SalePayment
+from .serializers import SaleCreateSerializer
 
 
 class SaleWorkflowApiTests(APITestCase):
     endpoint = '/api/v1/sales/'
 
     def setUp(self):
+        admin = get_user_model().objects.create_superuser(
+            username='sale-admin',
+            email='sale-admin@example.com',
+            password='test-password',
+        )
+        self.client.force_authenticate(user=admin)
         self.owner = Owner.objects.create(
             doc_type='CC',
             doc_number='SALE-OWNER-1',
@@ -118,6 +127,55 @@ class SaleWorkflowApiTests(APITestCase):
                 self.assertFalse(Sale.objects.exists())
                 self.product.refresh_from_db()
                 self.assertEqual(self.product.stock, 10)
+
+    def test_rejects_inactive_owner_or_pet_without_creating_sale(self):
+        self.owner.is_active = False
+        self.owner.save(update_fields=['is_active'])
+        inactive_owner = self.client.post(
+            self.endpoint,
+            self.payload(),
+            format='json',
+        )
+        self.assertEqual(inactive_owner.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('clientId', inactive_owner.data)
+
+        self.owner.is_active = True
+        self.owner.save(update_fields=['is_active'])
+        self.pet.is_active = False
+        self.pet.save(update_fields=['is_active'])
+        inactive_pet = self.client.post(
+            self.endpoint,
+            self.payload(),
+            format='json',
+        )
+        self.assertEqual(inactive_pet.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('petId', inactive_pet.data)
+        self.assertFalse(Sale.objects.exists())
+
+    def test_create_rechecks_owner_and_pet_after_initial_validation(self):
+        owner_serializer = SaleCreateSerializer(data=self.payload())
+        self.assertTrue(owner_serializer.is_valid(), owner_serializer.errors)
+        self.owner.is_active = False
+        self.owner.save(update_fields=['is_active'])
+
+        with self.assertRaises(ValidationError):
+            owner_serializer.save()
+        self.assertFalse(Sale.objects.exists())
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 10)
+
+        self.owner.is_active = True
+        self.owner.save(update_fields=['is_active'])
+        pet_serializer = SaleCreateSerializer(data=self.payload())
+        self.assertTrue(pet_serializer.is_valid(), pet_serializer.errors)
+        self.pet.owner = self.other_owner
+        self.pet.save(update_fields=['owner'])
+
+        with self.assertRaises(ValidationError):
+            pet_serializer.save()
+        self.assertFalse(Sale.objects.exists())
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 10)
 
     def test_rejects_inactive_or_insufficient_product_without_partial_sale(self):
         self.product.is_active = False

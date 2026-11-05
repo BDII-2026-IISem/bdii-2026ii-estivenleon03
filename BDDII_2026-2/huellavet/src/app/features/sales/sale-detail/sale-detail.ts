@@ -10,8 +10,10 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { PaymentMethod, Sale, SalePaymentCreatePayload } from '../../../core/models/sale.model';
 import { NotificationService } from '../../../core/services/notification.service';
+import { PaymentApi } from '../../../core/services/payment-api';
 import { SaleApi } from '../../../core/services/sale-api';
 import { toApiMessage } from '../../../core/utils/to-api-message';
+import { HasPermission } from '../../../shared/directives/has-permission';
 import { PageHeader } from '../../../shared/ui/page-header/page-header';
 import { StatusTag } from '../../../shared/ui/status-tag/status-tag';
 
@@ -24,6 +26,7 @@ import { StatusTag } from '../../../shared/ui/status-tag/status-tag';
     CurrencyPipe,
     DatePipe,
     FormsModule,
+    HasPermission,
     MessageModule,
     PageHeader,
     RouterLink,
@@ -38,6 +41,7 @@ import { StatusTag } from '../../../shared/ui/status-tag/status-tag';
 export class SaleDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(SaleApi);
+  private readonly paymentsApi = inject(PaymentApi);
   private readonly notify = inject(NotificationService);
   private readonly confirmation = inject(ConfirmationService);
 
@@ -118,7 +122,7 @@ export class SaleDetail {
       amount: amount.toFixed(2),
     };
     this.paymentSaving.set(true);
-    this.api.addPayment(current.id, payload).subscribe({
+    this.paymentsApi.addSalePayment(current.id, payload).subscribe({
       next: (sale) => {
         this.sale.set(sale);
         this.paymentAmount = null;

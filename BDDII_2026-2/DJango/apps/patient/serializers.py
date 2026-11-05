@@ -21,7 +21,19 @@ class OwnerSerializer(serializers.ModelSerializer):
         validators=[UniqueValidator(queryset=Owner.objects.all())],
     )
     doc_type = serializers.CharField(default='CC', required=False, allow_blank=True)
-    telefono = serializers.CharField(source='phone', required=False, allow_blank=True, allow_null=True)
+    telefono = serializers.CharField(
+        source='phone',
+        max_length=20,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
+    email = serializers.EmailField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
     direccion = serializers.CharField(source='address', required=False, allow_blank=True, allow_null=True)
     status = OwnerStatusField(source='is_active', required=False)
 

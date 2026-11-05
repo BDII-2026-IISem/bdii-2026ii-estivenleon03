@@ -69,7 +69,7 @@
   </div>
 
   @if (canAddPayment()) {
-    <section class="mt-6 grid gap-4 rounded-lg border border-slate-700 bg-slate-900 p-4 sm:grid-cols-3">
+    <section *appHasPermission="'POST /api/v1/sales/:id/payments'" class="mt-6 grid gap-4 rounded-lg border border-slate-700 bg-slate-900 p-4 sm:grid-cols-3">
       <div class="flex flex-col gap-2">
         <label for="follow-up-payment-method" class="text-sm font-semibold text-slate-200">Método de pago</label>
         <select

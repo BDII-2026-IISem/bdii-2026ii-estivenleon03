@@ -57,9 +57,17 @@ class SaleCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         pet = attrs.get('pet')
         owner = attrs['owner']
+        if not owner.is_active:
+            raise serializers.ValidationError({
+                'clientId': 'No se puede registrar una venta para un propietario inactivo.',
+            })
         if pet is not None and pet.owner_id != owner.pk:
             raise serializers.ValidationError({
                 'petId': 'La mascota seleccionada no pertenece al propietario.',
+            })
+        if pet is not None and not pet.is_active:
+            raise serializers.ValidationError({
+                'petId': 'No se puede registrar una venta para una mascota inactiva.',
             })
 
         product_ids = [item['productId'] for item in attrs['items']]
@@ -82,6 +90,39 @@ class SaleCreateSerializer(serializers.Serializer):
         lines = validated_data.pop('items')
         payment_method = validated_data.pop('paymentMethod', None)
         payment_amount = validated_data.pop('paymentAmount', None)
+        try:
+            owner = (
+                Owner.objects.select_for_update()
+                .get(pk=validated_data['owner'].pk)
+            )
+        except Owner.DoesNotExist as exc:
+            raise serializers.ValidationError({
+                'clientId': 'El propietario ya no está disponible.',
+            }) from exc
+        if not owner.is_active:
+            raise serializers.ValidationError({
+                'clientId': 'No se puede registrar una venta para un propietario inactivo.',
+            })
+        validated_data['owner'] = owner
+
+        pet = validated_data.get('pet')
+        if pet is not None:
+            try:
+                pet = Pet.objects.select_for_update().get(pk=pet.pk)
+            except Pet.DoesNotExist as exc:
+                raise serializers.ValidationError({
+                    'petId': 'La mascota ya no está disponible.',
+                }) from exc
+            if not pet.is_active:
+                raise serializers.ValidationError({
+                    'petId': 'No se puede registrar una venta para una mascota inactiva.',
+                })
+            if pet.owner_id != owner.pk:
+                raise serializers.ValidationError({
+                    'petId': 'La mascota seleccionada no pertenece al propietario.',
+                })
+            validated_data['pet'] = pet
+
         product_ids = [line['productId'] for line in lines]
 
         products = list(

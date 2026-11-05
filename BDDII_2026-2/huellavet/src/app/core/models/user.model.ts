@@ -4,6 +4,7 @@ export interface User extends Timestamps {
   id: number;
   username: string;
   email: string;
+  name?: string;
   avatar: string | null;
   status: Status;
 }

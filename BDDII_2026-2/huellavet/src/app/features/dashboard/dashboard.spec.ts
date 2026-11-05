@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import '../../core/register-locale';
 import { PropietarioApi } from '../../core/services/propietario-api';
 import { ProductApi } from '../../core/services/product-api';
 import { SaleApi } from '../../core/services/sale-api';
@@ -47,9 +48,11 @@ describe('DashboardComponent', () => {
   it('debe calcular las 4 métricas del panel correctamente', async () => {
     const fixture = TestBed.createComponent(Dashboard);
     await fixture.whenStable();
+    fixture.detectChanges();
 
-    expect(fixture.componentInstance.todayPayments().length).toBe(1);
+    expect(fixture.componentInstance.todaySales().length).toBe(1);
     expect(fixture.componentInstance.todayTotal()).toBe(100);
+    expect(fixture.nativeElement.textContent).toContain('$ 100');
     expect(fixture.componentInstance.lowStockProducts().length).toBe(1);
     expect(fixture.componentInstance.activeClientsCount()).toBe(1);
   });

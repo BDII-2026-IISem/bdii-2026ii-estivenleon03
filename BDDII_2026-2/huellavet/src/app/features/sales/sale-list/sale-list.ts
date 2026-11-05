@@ -11,10 +11,12 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Propietario } from '../../../core/models/propietario.model';
 import { Product } from '../../../core/models/product.model';
+import { Mascota } from '../../../core/models/mascota.model';
 import { Sale, SaleCreatePayload } from '../../../core/models/sale.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { PropietarioApi } from '../../../core/services/propietario-api';
 import { ProductApi } from '../../../core/services/product-api';
+import { MascotaService } from '../../../core/services/mascota.service';
 import { SaleApi } from '../../../core/services/sale-api';
 import { toApiMessage } from '../../../core/utils/to-api-message';
 import { filterRows } from '../../../core/utils/filter-rows';
@@ -50,11 +52,13 @@ export class SaleList {
   private readonly api = inject(SaleApi);
   private readonly clientsApi = inject(PropietarioApi);
   private readonly productsApi = inject(ProductApi);
+  private readonly petsApi = inject(MascotaService);
   private readonly notify = inject(NotificationService);
 
   readonly rows = signal<Sale[]>([]);
   readonly clients = signal<Propietario[]>([]);
   readonly products = signal<Product[]>([]);
+  readonly pets = signal<Mascota[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
@@ -93,11 +97,13 @@ export class SaleList {
       payments: this.api.list(),
       clients: this.clientsApi.list(),
       products: this.productsApi.available(),
+      pets: this.petsApi.getMascotas(),
     }).subscribe({
-      next: ({ payments, clients, products }) => {
+      next: ({ payments, clients, products, pets }) => {
         this.rows.set(payments);
         this.clients.set(clients.filter((c) => c.status === 'active'));
         this.products.set(products);
+        this.pets.set(pets.filter((pet) => pet.is_active));
         this.loading.set(false);
       },
       error: (err: unknown) => {

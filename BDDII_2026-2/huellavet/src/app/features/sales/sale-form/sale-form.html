@@ -16,7 +16,22 @@
         optionLabel="nombre"
         optionValue="id"
         placeholder="Selecciona cliente"
-        [(ngModel)]="clientId"
+        [ngModel]="clientId()"
+        (ngModelChange)="selectClient($event)"
+        appendTo="body"
+        styleClass="w-full bg-slate-800 text-white border-slate-600"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold text-slate-200">Mascota (opcional)</label>
+      <p-select
+        [options]="availablePets()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Sin mascota asociada"
+        [ngModel]="petId()"
+        (ngModelChange)="petId.set($event)"
         appendTo="body"
         styleClass="w-full bg-slate-800 text-white border-slate-600"
       />
@@ -25,7 +40,8 @@
     <div class="flex flex-col gap-2">
       <label class="text-sm font-semibold text-slate-200">Fecha de Venta</label>
       <p-datePicker
-        [(ngModel)]="saleDate"
+        [ngModel]="saleDate()"
+        (ngModelChange)="saleDate.set($event)"
         [showTime]="true"
         hourFormat="24"
         dateFormat="yy-mm-dd"
@@ -37,7 +53,8 @@
     <div class="flex flex-col gap-2">
       <label class="text-sm font-semibold text-slate-200">Descuento (COP)</label>
       <p-inputNumber
-        [(ngModel)]="discounts"
+        [ngModel]="discounts()"
+        (ngModelChange)="discounts.set($event ?? 0)"
         mode="decimal"
         [minFractionDigits]="2"
         [maxFractionDigits]="2"
@@ -52,7 +69,8 @@
         <select
           id="sale-payment-method"
           class="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-white"
-          [(ngModel)]="paymentMethod"
+          [ngModel]="paymentMethod()"
+          (ngModelChange)="paymentMethod.set($event)"
         >
           <option value="CASH">Efectivo</option>
           <option value="DEBIT_CARD">Tarjeta débito</option>
@@ -64,7 +82,8 @@
         <label for="sale-payment-amount" class="text-sm font-semibold text-slate-200">Abono inicial (COP; opcional)</label>
         <p-inputNumber
           id="sale-payment-amount"
-          [(ngModel)]="paymentAmount"
+          [ngModel]="paymentAmount()"
+          (ngModelChange)="paymentAmount.set($event)"
           mode="currency"
           currency="COP"
           locale="es-CO"
@@ -89,7 +108,8 @@
           optionLabel="name"
           optionValue="id"
           placeholder="Selecciona un producto..."
-          [(ngModel)]="selectedProductId"
+          [ngModel]="selectedProductId()"
+          (ngModelChange)="selectedProductId.set($event)"
           appendTo="body"
           styleClass="w-full bg-slate-800 text-white border-slate-600"
         />
@@ -98,7 +118,8 @@
       <div class="w-full sm:w-32 flex flex-col gap-1">
         <label class="text-xs text-slate-400">Cantidad</label>
         <p-inputNumber
-          [(ngModel)]="inputQuantity"
+          [ngModel]="inputQuantity()"
+          (ngModelChange)="inputQuantity.set($event ?? 1)"
           [min]="1"
           styleClass="w-full bg-slate-800 text-white border-slate-600"
         />

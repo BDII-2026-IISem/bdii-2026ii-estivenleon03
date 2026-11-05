@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth-guard';
+import { permissionGuard } from './core/guards/permission-guard';
 import { Shell } from './layout/shell/shell';
 
 export const routes: Routes = [
@@ -27,6 +28,10 @@ export const routes: Routes = [
       {
         path: 'mascotas',
         loadComponent: () => import('./features/mascotas/mascotas.component').then((m) => m.MascotasComponent),
+      },
+      {
+        path: 'veterinarios',
+        loadComponent: () => import('./features/veterinarians/veterinarian-list').then((m) => m.VeterinarianList),
       },
       {
         path: 'citas',
@@ -59,6 +64,18 @@ export const routes: Routes = [
       {
         path: 'ventas/:id',
         loadComponent: () => import('./features/sales/sale-detail/sale-detail').then((m: any) => m.SaleDetail || m.default),
+      },
+      {
+        path: 'pagos-citas',
+        canActivate: [permissionGuard],
+        data: { permission: 'GET /api/v1/payments' },
+        loadComponent: () => import('./features/billing/appointment-payments/appointment-payments').then((m) => m.AppointmentPayments),
+      },
+      {
+        path: 'auditoria-pagos',
+        canActivate: [permissionGuard],
+        data: { permission: 'GET /api/v1/payment-audits' },
+        loadComponent: () => import('./features/billing/payment-audit/payment-audit').then((m) => m.PaymentAuditPage),
       },
       {
         path: 'admin/usuarios',

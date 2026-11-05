@@ -25,13 +25,16 @@
           <p class="text-xs text-slate-400">{{ ownerNameForPet(item.pet) }}</p>
         </td>
         <td>{{ veterinarianName(item.veterinarian) }}</td>
-        <td>{{ item.title }}</td>
+        <td>
+          <p>{{ item.title }}</p>
+          <p class="text-xs text-slate-400">{{ item.appointment ? 'Cita #' + item.appointment : 'Sin cita asociada' }}</p>
+        </td>
         <td>{{ item.created_at ? (item.created_at | date:'short') : '—' }}</td>
         <td><p-tag [value]="item.is_active ? 'Activa' : 'Inactiva'" [severity]="item.is_active ? 'success' : 'secondary'" /></td>
         <td class="text-right">
           <button pButton type="button" text rounded severity="info" icon="pi pi-eye" aria-label="Ver detalle" (click)="viewDetails(item)"></button>
           <button pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar consulta" (click)="openEdit(item)"></button>
-          <button pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Eliminar consulta" (click)="remove(item)"></button>
+          <button pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Dar de baja consulta" (click)="remove(item)"></button>
         </td>
       </tr>
     </ng-template>
@@ -65,6 +68,21 @@
           <option [ngValue]="0" disabled>Selecciona un veterinario</option>
           @for (vet of availableVeterinarians(); track vet.id) {
             <option [ngValue]="vet.id">{{ vet.name }} · #{{ vet.id }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">
+        Cita relacionada (opcional)
+        <select
+          class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white"
+          [(ngModel)]="currentConsultation.appointment"
+          (ngModelChange)="selectAppointment($event)"
+        >
+          <option [ngValue]="null">Consulta sin cita</option>
+          @for (appointment of availableAppointments(); track appointment.id) {
+            <option [ngValue]="appointment.id">
+              #{{ appointment.id }} · {{ petName(appointment.pet) }} · {{ appointment.start_time | date:'short' }} · {{ appointment.reason }}
+            </option>
           }
         </select>
       </label>
@@ -116,6 +134,7 @@
       <div class="space-y-3 py-2 text-slate-200">
         <p><strong>Mascota:</strong> {{ petName(item.pet) }} · {{ ownerNameForPet(item.pet) }}</p>
         <p><strong>Veterinario:</strong> {{ veterinarianName(item.veterinarian) }}</p>
+        <p><strong>Cita:</strong> {{ item.appointment ? '#' + item.appointment : 'Sin cita asociada' }}</p>
         <p><strong>Motivo:</strong> {{ item.title }}</p>
         <p><strong>Síntomas:</strong> {{ item.symptoms }}</p>
         <p><strong>Diagnóstico:</strong> {{ item.diagnosis }}</p>

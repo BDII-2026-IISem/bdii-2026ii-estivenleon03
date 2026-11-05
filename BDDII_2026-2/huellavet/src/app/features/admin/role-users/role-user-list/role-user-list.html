@@ -1,5 +1,5 @@
 <app-page-header title="Asignación de Roles a Usuarios" subtitle="Vinculación entre usuarios y perfiles.">
-  <button *appHasPermission="'POST /api/role-users'" pButton type="button" severity="success" (click)="openCreate()">
+  <button *appHasPermission="'POST /api/v1/user-roles'" pButton type="button" severity="success" (click)="openCreate()">
     <i pButtonIcon class="pi pi-link"></i>
     <span pButtonLabel>Nueva Asignación</span>
   </button>
@@ -29,7 +29,7 @@
       <td class="text-indigo-400 font-semibold">{{ roleLabel(row.roleId) }}</td>
       <td><app-status-tag [status]="row.status" /></td>
       <td class="text-right">
-        <button *appHasPermission="'DELETE /api/role-users/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Retirar" pTooltip="Retirar" (click)="remove(row)"></button>
+        <button *appHasPermission="'DELETE /api/v1/user-roles/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Retirar" pTooltip="Retirar" (click)="remove(row)"></button>
       </td>
     </tr>
   </ng-template>

@@ -27,7 +27,11 @@ class EffectivePermissionsApiTests(APITestCase):
             resource='/api/v1/consultations',
             http_method='GET',
         )
-        UserRole.objects.create(user=rbac_user, role=role)
+        UserRole.objects.create(
+            user=rbac_user,
+            auth_user=auth_user,
+            role=role,
+        )
         RolePermission.objects.create(role=role, permission=permission)
         self.client.force_authenticate(user=auth_user)
 
@@ -73,6 +77,47 @@ class EffectivePermissionsApiTests(APITestCase):
             http_method='POST',
             resource='/api/v1/sales/:id/payments',
         ).exists())
+        audit_permissions = Permission.objects.filter(
+            resource__in=(
+                '/api/v1/payment-audits',
+                '/api/v1/payment-audits/:id',
+            )
+        )
+        self.assertTrue(audit_permissions.filter(http_method='GET').exists())
+        self.assertTrue(
+            RolePermission.objects.filter(
+                role__name='ADMIN',
+                permission__in=audit_permissions,
+                permission__http_method='GET',
+            ).exists()
+        )
+        self.assertFalse(
+            RolePermission.objects.filter(
+                role__name='ADMIN',
+                permission__in=audit_permissions,
+            ).exclude(permission__http_method='GET').exists()
+        )
         self.assertFalse(
             Permission.objects.filter(resource__contains='(?P').exists()
+        )
+
+    def test_seed_can_assign_the_admin_role_to_a_django_user(self):
+        auth_user = get_user_model().objects.create_user(
+            username='bootstrap-admin',
+            email='bootstrap@example.com',
+            password='test-password',
+        )
+
+        call_command(
+            'seed_rbac',
+            username=auth_user.username,
+            stdout=StringIO(),
+        )
+
+        self.assertTrue(
+            UserRole.objects.filter(
+                auth_user=auth_user,
+                role__name='ADMIN',
+                is_active=True,
+            ).exists()
         )

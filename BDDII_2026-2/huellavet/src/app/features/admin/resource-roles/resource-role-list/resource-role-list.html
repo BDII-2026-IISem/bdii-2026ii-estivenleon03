@@ -1,24 +1,35 @@
-<app-page-header title="Matriz de Concesiones (RBAC)" subtitle="Asignación de permisos de recursos a roles.">
-  <button *appHasPermission="'POST /api/resource-roles'" pButton type="button" severity="success" (click)="openCreate()">
+<app-page-header title="Permisos por rol" subtitle="Define qué acciones puede realizar cada perfil dentro de HuellaVet.">
+  <button *appHasPermission="'POST /api/v1/role-permissions'" pButton type="button" severity="success" (click)="openCreate()">
     <i pButtonIcon class="pi pi-key"></i>
-    <span pButtonLabel>Nueva Concesión</span>
+    <span pButtonLabel>Conceder permiso</span>
   </button>
 </app-page-header>
 
 @if (error()) {
   <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
 }
+@if (optionsError()) {
+  <p-message severity="error" styleClass="mb-4 w-full">
+    No se pudieron cargar los roles y recursos para crear permisos. {{ optionsError() }}
+  </p-message>
+}
 
 <p-table [value]="visibleRows()" [loading]="loading()" dataKey="id" tableStyleClass="min-w-3xl" [paginator]="visibleRows().length > 10" [rows]="10">
   <ng-template #caption>
-    <input pInputText type="search" class="w-full bg-slate-800 text-white border-slate-600" aria-label="Buscar concesiones" placeholder="Buscar por rol o recurso..." [value]="filter()" (input)="filter.set($any($event.target).value)" />
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="font-semibold text-white">Permisos configurados</p>
+        <p class="text-sm text-slate-400">Busca por perfil, acción o módulo.</p>
+      </div>
+      <input pInputText type="search" class="w-full bg-slate-800 text-white border-slate-600 sm:max-w-sm" aria-label="Buscar permisos" placeholder="Ej. Veterinario, consultar, citas..." [value]="filter()" (input)="filter.set($any($event.target).value)" />
+    </div>
   </ng-template>
 
   <ng-template #header>
     <tr>
-      <th>Método</th>
-      <th>Recurso Protegido</th>
-      <th>Rol Concedido</th>
+      <th>Perfil</th>
+      <th>Acceso autorizado</th>
+      <th>Recurso del sistema</th>
       <th>Estado</th>
       <th class="w-28 text-right">Acciones</th>
     </tr>
@@ -27,15 +38,21 @@
   <ng-template #body let-row>
     <tr>
       <td>
-        <p-tag [value]="resource(row.resourceId)?.method ?? '—'" [severity]="methodSeverity(resource(row.resourceId)?.method)" [rounded]="true" />
+        <p class="font-semibold text-white">{{ roleLabel(row.roleId) }}</p>
+        @if (roleDescription(row.roleId); as description) {
+          <p class="mt-1 max-w-xs text-xs text-slate-400">{{ description }}</p>
+        }
       </td>
       <td>
-        <code class="text-xs text-emerald-400 font-mono">{{ resourceLabel(row.resourceId) }}</code>
+        <p-tag [value]="actionLabel(resource(row.resourceId)?.method)" [severity]="methodSeverity(resource(row.resourceId)?.method)" [rounded]="true" />
       </td>
-      <td class="text-indigo-400 font-semibold">{{ roleLabel(row.roleId) }}</td>
+      <td>
+        <p class="font-medium text-slate-200">{{ resourceName(resource(row.resourceId)?.path ?? '') }}</p>
+        <code class="mt-1 block break-all text-xs text-slate-500">{{ resource(row.resourceId)?.path ?? 'Recurso no disponible' }}</code>
+      </td>
       <td><app-status-tag [status]="row.status" /></td>
       <td class="text-right">
-        <button *appHasPermission="'DELETE /api/resource-roles/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Retirar" pTooltip="Retirar" (click)="remove(row)"></button>
+        <button *appHasPermission="'DELETE /api/v1/role-permissions/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Retirar permiso" pTooltip="Retirar permiso" (click)="remove(row)"></button>
       </td>
     </tr>
   </ng-template>
@@ -43,25 +60,118 @@
   <ng-template #emptymessage>
     <tr>
       <td colspan="5">
-        <app-empty-state icon="pi pi-key" title="Sin concesiones" message="No se han asignado permisos a ningún rol." />
+        <app-empty-state icon="pi pi-shield" title="Aún no hay permisos configurados" message="Concede permisos a los perfiles para definir qué pueden consultar o administrar." />
       </td>
     </tr>
   </ng-template>
 </p-table>
 
-<p-dialog [visible]="dialogVisible()" (visibleChange)="dialogVisible.set($event)" header="Nueva Concesión" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-lg mx-4">
+<p-dialog [visible]="dialogVisible()" (visibleChange)="dialogVisible.set($event)" header="Conceder permisos a un perfil" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-3xl mx-4">
   <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 text-slate-100">
-    <div class="flex flex-col gap-2">
-      <label for="rr-role" class="text-sm font-semibold">Rol</label>
-      <p-select inputId="rr-role" formControlName="roleId" [options]="roles()" optionLabel="name" optionValue="id" [filter]="true" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
+    <div class="rounded-lg border border-slate-700 bg-slate-900/70 p-3 text-sm text-slate-300">
+      <p class="font-medium text-white">Elige un perfil y marca las acciones que necesita.</p>
+      <p class="mt-1">Los permisos se aplican a todas las personas que tengan este perfil. Concede solo los accesos necesarios.</p>
     </div>
+
     <div class="flex flex-col gap-2">
-      <label for="rr-res" class="text-sm font-semibold">Recurso</label>
-      <p-select inputId="rr-res" formControlName="resourceId" [options]="resourceOptions()" optionLabel="label" optionValue="id" [filter]="true" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
+      <label for="rr-role" class="text-sm font-semibold">1. Perfil que recibirá el permiso</label>
+      <p-select inputId="rr-role" formControlName="roleId" [options]="roles()" optionLabel="name" optionValue="id" [filter]="true" filterBy="name,description" [loading]="optionsLoading()" [disabled]="optionsLoading()" placeholder="Selecciona un perfil" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" (onChange)="onRoleChange()">
+        <ng-template #item let-role>
+          <div class="flex flex-col gap-1">
+            <span class="font-semibold">{{ role.name }}</span>
+            @if (role.description) {
+              <span class="text-xs text-slate-400">{{ role.description }}</span>
+            }
+          </div>
+        </ng-template>
+        <ng-template #selectedItem let-role>
+          <span>{{ role?.name ?? 'Selecciona un perfil' }}</span>
+        </ng-template>
+      </p-select>
+      @if (form.controls.roleId.touched && form.controls.roleId.invalid) {
+        <small class="text-rose-400">Selecciona un perfil para continuar.</small>
+      }
     </div>
+
+    <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <label for="rr-permission-search" class="text-sm font-semibold">2. Permisos que tendrá el perfil</label>
+          <p class="mt-1 text-xs text-slate-400">Marca una o varias acciones. Cada permiso se registra de forma independiente.</p>
+        </div>
+        <span class="text-sm font-semibold text-emerald-300" aria-live="polite">
+          {{ selectedResourceIds().length }} seleccionados
+        </span>
+      </div>
+
+      <input pInputText id="rr-permission-search" type="search" class="w-full bg-slate-800 text-white border-slate-600" aria-label="Buscar permisos" placeholder="Buscar por acción o módulo..." [value]="permissionFilter()" (input)="permissionFilter.set($any($event.target).value)" [disabled]="!selectedRoleId()" />
+
+      @if (!selectedRoleId()) {
+        <p class="rounded-lg border border-slate-700 bg-slate-900/60 p-4 text-sm text-slate-400">
+          Selecciona primero un perfil para ver los permisos disponibles.
+        </p>
+      } @else {
+        <div class="overflow-hidden rounded-lg border border-slate-700">
+          <div class="flex items-center gap-3 border-b border-slate-700 bg-slate-900 px-4 py-3">
+            <input id="rr-select-visible" type="checkbox" class="h-4 w-4 accent-emerald-500" [checked]="allVisibleSelected()" [disabled]="selectableResources().length === 0" (change)="toggleVisibleResources($event)" />
+            <label for="rr-select-visible" class="cursor-pointer text-sm font-medium text-slate-200">Seleccionar todos los resultados</label>
+          </div>
+          <div class="max-h-72 divide-y divide-slate-800 overflow-y-auto">
+            @for (option of selectableResources(); track option.id) {
+              <label class="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-800/70">
+                <input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-500" [checked]="isSelected(option.id)" [disabled]="saving()" (change)="toggleResource(option.id, $event)" />
+                <span class="min-w-0 flex-1">
+                  <span class="flex flex-wrap items-center gap-2">
+                    <p-tag [value]="option.actionLabel" [severity]="option.severity" [rounded]="true" />
+                    <span class="font-medium text-slate-100">{{ option.resourceName }}</span>
+                    @if (existingGrant(selectedRoleId(), option.id)) {
+                      <span class="text-xs text-amber-300">Se reactivará el permiso retirado</span>
+                    }
+                  </span>
+                  <code class="mt-1 block break-all text-xs text-slate-400">{{ option.method }} {{ option.path }}</code>
+                  <span class="mt-1 block text-xs text-slate-500">{{ actionDescription(option.method) }}</span>
+                </span>
+              </label>
+            } @empty {
+              <p class="p-4 text-sm text-slate-400">
+                {{ permissionFilter() ? 'No hay permisos que coincidan con la búsqueda.' : 'Este perfil ya tiene todos los permisos disponibles.' }}
+              </p>
+            }
+          </div>
+        </div>
+      }
+
+      @if (selectionTouched() && selectedResourceIds().length === 0) {
+        <small class="text-rose-400">Marca al menos un permiso para continuar.</small>
+      }
+    </div>
+
+    @if (selectedResourceIds().length > 0) {
+      <section class="rounded-lg border border-emerald-800/70 bg-emerald-950/30 p-4" aria-live="polite">
+        <div class="flex items-center gap-2">
+          <i class="pi pi-check-circle text-emerald-400" aria-hidden="true"></i>
+          <h3 class="font-semibold text-white">Resumen de la asignación</h3>
+        </div>
+        <p class="mt-2 text-sm text-slate-200">
+          El perfil <strong>{{ roleFor(selectedRoleId())?.name ?? 'seleccionado' }}</strong>
+          recibirá {{ selectedResourceIds().length }} permiso(s):
+        </p>
+        <ul class="mt-2 grid gap-1 text-sm text-slate-300 sm:grid-cols-2">
+          @for (option of resourceOptions(); track option.id) {
+            @if (isSelected(option.id)) {
+              <li>{{ option.actionLabel }} · {{ option.resourceName }}</li>
+            }
+          }
+        </ul>
+      </section>
+    }
+
     <div class="flex items-end justify-end gap-2 pt-4 border-t border-slate-700">
       <button pButton type="button" severity="secondary" outlined (click)="dialogVisible.set(false)"><span pButtonLabel>Cancelar</span></button>
-      <button pButton type="submit" severity="success" [loading]="saving()"><span pButtonLabel>Conceder</span></button>
+      <button pButton type="submit" severity="success" [loading]="saving()" [disabled]="optionsLoading() || !!optionsError() || !form.valid || selectedResourceIds().length === 0">
+        <i pButtonIcon class="pi pi-key"></i>
+        <span pButtonLabel>Conceder {{ selectedResourceIds().length || '' }} permiso(s)</span>
+      </button>
     </div>
   </form>
 </p-dialog>

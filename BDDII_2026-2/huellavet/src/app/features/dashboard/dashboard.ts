@@ -17,13 +17,20 @@ import { toApiMessage } from '../../core/utils/to-api-message';
 import { EmptyState } from '../../shared/ui/empty-state/empty-state';
 import { PageHeader } from '../../shared/ui/page-header/page-header';
 
+function bogotaDay(value: string | Date): string | null {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
 function sameDay(iso: string, reference: Date): boolean {
-  const date = new Date(iso);
-  return (
-    date.getFullYear() === reference.getFullYear() &&
-    date.getMonth() === reference.getMonth() &&
-    date.getDate() === reference.getDate()
-  );
+  const date = bogotaDay(iso);
+  return date !== null && date === bogotaDay(reference);
 }
 
 @Component({
@@ -55,13 +62,13 @@ export class Dashboard {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
-  readonly todayPayments = computed(() => {
+  readonly todaySales = computed(() => {
     const now = new Date();
     return this.payments().filter((s) => s.status === 'active' && sameDay(s.saleDate, now));
   });
 
   readonly todayTotal = computed(() =>
-    this.todayPayments().reduce((acc, s) => acc + toNumber(s.total), 0)
+    this.todaySales().reduce((acc, sale) => acc + toNumber(sale.total), 0)
   );
 
   readonly lowStockProducts = computed(() =>
@@ -71,7 +78,6 @@ export class Dashboard {
   readonly activeClientsCount = computed(
     () => this.clients().filter((c) => c.status === 'active').length
   );
-
   constructor() {
     this.load();
   }

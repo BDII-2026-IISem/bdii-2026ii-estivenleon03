@@ -1,0 +1,129 @@
+<app-page-header title="Auditoría de pagos" subtitle="Historial de cambios en pagos. Los registros son permanentes y de solo lectura.">
+  <button pButton type="button" severity="secondary" outlined (click)="load()" [disabled]="loading()" class="w-full sm:w-auto">
+    <i pButtonIcon class="pi pi-refresh"></i>
+    <span pButtonLabel>{{ loading() ? 'Actualizando…' : 'Actualizar' }}</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<section class="my-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+  <article class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+    <p class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Creaciones</p>
+    <p class="mt-2 text-2xl font-bold text-white">{{ insertCount() }}</p>
+  </article>
+  <article class="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
+    <p class="text-xs font-semibold uppercase tracking-wider text-sky-300">Actualizaciones</p>
+    <p class="mt-2 text-2xl font-bold text-white">{{ updateCount() }}</p>
+  </article>
+  <article class="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4">
+    <p class="text-xs font-semibold uppercase tracking-wider text-rose-300">Eliminaciones</p>
+    <p class="mt-2 text-2xl font-bold text-white">{{ deleteCount() }}</p>
+  </article>
+</section>
+
+<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <h2 class="text-lg font-semibold text-white">Registro de actividad</h2>
+    <p class="text-sm text-slate-400">{{ filteredRows().length }} de {{ rows().length }} eventos</p>
+  </div>
+  <input
+    pInputText
+    type="search"
+    class="w-full border-slate-600 bg-slate-800 text-white placeholder:text-slate-400 sm:max-w-sm"
+    aria-label="Buscar en la auditoría"
+    placeholder="Buscar por evento, pago o usuario…"
+    [ngModel]="filter()"
+    (ngModelChange)="filter.set($event)"
+  />
+</div>
+
+@if (loading() && rows().length === 0) {
+  <div class="rounded-xl border border-slate-700 bg-slate-900 p-8 text-center text-slate-300">
+    <i class="pi pi-spin pi-spinner mr-2"></i> Cargando historial…
+  </div>
+} @else if (filteredRows().length > 0) {
+  <div class="space-y-4">
+    @for (entry of filteredRows(); track entry.id) {
+      <article class="overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-lg shadow-black/10">
+        <header class="flex flex-col gap-3 border-b border-slate-700/80 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div class="flex flex-wrap items-center gap-3">
+            <p-tag [severity]="actionSeverity(entry.actionSale)">
+              <ng-template #content>
+                <span class="inline-flex items-center gap-2">
+                  <i [class]="actionIcon(entry.actionSale)"></i>
+                  {{ actionLabel(entry.actionSale) }}
+                </span>
+              </ng-template>
+            </p-tag>
+            <span class="rounded-md border border-slate-600 bg-slate-800 px-2.5 py-1 font-mono text-sm font-semibold text-slate-100">
+              Pago #{{ entry.payment_id }}
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+            <span class="inline-flex items-center gap-2">
+              <i class="pi pi-user text-xs"></i>{{ entry.changed_by || 'Usuario no disponible' }}
+            </span>
+            <time class="inline-flex items-center gap-2" [attr.datetime]="entry.changed_at">
+              <i class="pi pi-clock text-xs"></i>{{ formatDate(entry.changed_at) }}
+            </time>
+          </div>
+        </header>
+
+        <div class="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
+          <section class="min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-950/60">
+            <div class="flex items-center justify-between border-b border-slate-700 px-3 py-2">
+              <h3 class="text-sm font-semibold text-slate-200">Antes del cambio</h3>
+              <span class="text-xs text-slate-500">Estado previo</span>
+            </div>
+            @if (entry.before_data; as beforeData) {
+              <dl class="divide-y divide-slate-800 px-3">
+                @for (field of auditFields(beforeData); track field.label) {
+                  <div class="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <dt class="text-xs font-medium text-slate-400">{{ field.label }}</dt>
+                    <dd class="break-words text-sm font-semibold text-slate-100 sm:text-right">{{ field.value }}</dd>
+                  </div>
+                }
+              </dl>
+            } @else {
+              <p class="p-4 text-sm text-slate-400">Este es el registro inicial del pago; no hay información anterior.</p>
+            }
+          </section>
+
+          <section class="min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-950/60">
+            <div class="flex items-center justify-between border-b border-slate-700 px-3 py-2">
+              <h3 class="text-sm font-semibold text-slate-200">Después del cambio</h3>
+              <span class="text-xs text-slate-500">Estado resultante</span>
+            </div>
+            @if (entry.after_data; as afterData) {
+              <dl class="divide-y divide-slate-800 px-3">
+                @for (field of auditFields(afterData); track field.label) {
+                  <div class="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <dt class="text-xs font-medium text-slate-400">{{ field.label }}</dt>
+                    <dd class="break-words text-sm font-semibold text-slate-100 sm:text-right">{{ field.value }}</dd>
+                  </div>
+                }
+              </dl>
+            } @else {
+              <p class="p-4 text-sm text-slate-400">El pago fue eliminado; este evento se conserva en el historial.</p>
+            }
+          </section>
+        </div>
+      </article>
+    }
+  </div>
+} @else if (filter().trim()) {
+  <div class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-10 text-center">
+    <i class="pi pi-search text-2xl text-slate-500"></i>
+    <p class="mt-3 font-medium text-white">No hay coincidencias</p>
+    <p class="mt-1 text-sm text-slate-400">Prueba con otro ID de pago, evento o usuario.</p>
+  </div>
+} @else {
+  <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-4 py-12 text-center">
+    <i class="pi pi-history text-3xl text-slate-500"></i>
+    <p class="mt-3 font-medium text-white">Aún no hay eventos de auditoría</p>
+    <p class="mt-1 text-sm text-slate-400">Los cambios de pagos aparecerán aquí cuando se registren.</p>
+  </div>
+}

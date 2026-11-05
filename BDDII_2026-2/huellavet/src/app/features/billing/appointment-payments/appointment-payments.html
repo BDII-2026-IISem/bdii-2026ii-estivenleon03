@@ -1,0 +1,115 @@
+<app-page-header title="Pagos de citas" subtitle="Consulta y administra los pagos vinculados a citas veterinarias.">
+  <button *appHasPermission="'POST /api/v1/payments'" pButton type="button" severity="success" (click)="openCreate()" [disabled]="!canReadAppointments()">
+    <i pButtonIcon class="pi pi-plus"></i>
+    <span pButtonLabel>Registrar pago</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+@if (!canReadAppointments()) {
+  <p-message severity="warn" styleClass="mb-4 w-full">
+    Puedes consultar los pagos, pero para registrar uno necesitas el permiso de lectura de citas.
+  </p-message>
+}
+
+<p-table [value]="rows()" [loading]="loading()" dataKey="id" [paginator]="rows().length > 10" [rows]="10">
+  <ng-template #header>
+    <tr>
+      <th>Pago</th>
+      <th>Cita</th>
+      <th>Fecha</th>
+      <th>Método</th>
+      <th>Estado</th>
+      <th class="text-right">Monto (COP)</th>
+      <th class="text-right">Acciones</th>
+    </tr>
+  </ng-template>
+  <ng-template #body let-payment>
+    <tr>
+      <td>#{{ payment.id }}</td>
+      <td>#{{ payment.appointment }}</td>
+      <td>{{ payment.payment_date ? (payment.payment_date | date:'medium':'':'es-CO') : '—' }}</td>
+      <td>{{ methodLabel(payment.method) }}</td>
+      <td><p-tag [value]="statusLabel(payment.status)" [severity]="statusSeverity(payment.status)" /></td>
+      <td class="text-right font-semibold">{{ payment.amount | currency:'COP':'symbol-narrow':'1.0-0':'es-CO' }}</td>
+      <td class="text-right">
+        <button
+          *appHasPermission="'PATCH /api/v1/payments/:id'"
+          pButton type="button" text rounded severity="info" icon="pi pi-pencil"
+          aria-label="Editar pago" (click)="openEdit(payment)"
+        ></button>
+        <button
+          *appHasPermission="'DELETE /api/v1/payments/:id'"
+          pButton type="button" text rounded severity="danger" icon="pi pi-trash"
+          aria-label="Eliminar pago" (click)="remove(payment)"
+        ></button>
+      </td>
+    </tr>
+  </ng-template>
+  <ng-template #emptymessage>
+    <tr><td colspan="7" class="py-8 text-center text-slate-400">No hay pagos de citas registrados.</td></tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [header]="editing() ? 'Editar pago' : 'Registrar pago de cita'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-xl mx-4"
+>
+  <div class="grid gap-4 py-2 sm:grid-cols-2">
+    @if (editing()) {
+      <div class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">
+        <span>Cita asociada</span>
+        <span class="rounded-md border border-slate-700 bg-slate-900 p-2 text-slate-300">
+          {{ appointmentLabel(editing()!.appointment) }}
+        </span>
+      </div>
+    } @else {
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">
+      Cita
+      <select required
+        class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white"
+        [(ngModel)]="current.appointment">
+        <option [ngValue]="0" disabled>Selecciona una cita</option>
+        @for (appointment of appointments(); track appointment.id) {
+          <option [ngValue]="appointment.id">{{ appointmentLabel(appointment.id) }}</option>
+        }
+      </select>
+      </label>
+    }
+    <label class="flex flex-col gap-1 text-sm text-slate-200">
+      Monto (COP)
+      <input type="number" min="0.01" step="0.01" required
+        class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white"
+        [(ngModel)]="current.amount" />
+    </label>
+    <label class="flex flex-col gap-1 text-sm text-slate-200">
+      Método
+      <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.method">
+        @for (method of methods; track method.value) {
+          <option [ngValue]="method.value">{{ method.label }}</option>
+        }
+      </select>
+    </label>
+    <label class="flex flex-col gap-1 text-sm text-slate-200">
+      Estado
+      <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="current.status">
+        @for (status of statuses; track status.value) {
+          <option [ngValue]="status.value">{{ status.label }}</option>
+        }
+      </select>
+    </label>
+  </div>
+  <ng-template #footer>
+    <button pButton type="button" severity="secondary" text (click)="dialogVisible.set(false)">Cancelar</button>
+    <button pButton type="button" severity="success" [loading]="saving()" [disabled]="saving() || !current.appointment || !current.amount" (click)="save()">
+      {{ saving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </ng-template>
+</p-dialog>

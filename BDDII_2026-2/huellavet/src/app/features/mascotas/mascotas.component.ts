@@ -120,15 +120,15 @@ export class MascotasComponent {
 
   remove(pet: Mascota): void {
     this.confirmation.confirm({
-      header: 'Eliminar mascota',
-      message: `¿Eliminar a ${pet.name}? La operación puede rechazarse si conserva citas o consultas asociadas.`,
+      header: 'Dar de baja mascota',
+      message: `¿Dar de baja a ${pet.name}? Se conservarán sus citas, consultas e historial de ventas.`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Eliminar',
+      acceptLabel: 'Dar de baja',
       rejectLabel: 'Cancelar',
       accept: () =>
         this.api.deleteMascota(pet.id).subscribe({
           next: () => {
-            this.notify.warn('Mascota eliminada');
+            this.notify.warn('Mascota dada de baja');
             this.load();
           },
           error: (err: unknown) =>

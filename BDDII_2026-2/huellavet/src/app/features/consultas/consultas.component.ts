@@ -8,6 +8,8 @@ import { MessageModule } from 'primeng/message';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { forkJoin } from 'rxjs';
+import { AppointmentApi } from '../../core/services/appointment-api';
+import { Appointment } from '../../core/models/appointment.model';
 import { Consulta, ConsultaPayload } from '../../core/models/consulta.model';
 import { Mascota } from '../../core/models/mascota.model';
 import { Propietario } from '../../core/models/propietario.model';
@@ -29,6 +31,7 @@ import { toApiMessage } from '../../core/utils/to-api-message';
 })
 export class ConsultasComponent {
   private readonly api = inject(ConsultaService);
+  private readonly appointmentsApi = inject(AppointmentApi);
   private readonly petsApi = inject(MascotaService);
   private readonly ownersApi = inject(PropietarioApi);
   private readonly veterinariansApi = inject(VeterinarianApi);
@@ -36,6 +39,7 @@ export class ConsultasComponent {
   private readonly confirmation = inject(ConfirmationService);
 
   readonly consultations = signal<Consulta[]>([]);
+  readonly appointments = signal<Appointment[]>([]);
   readonly pets = signal<Mascota[]>([]);
   readonly owners = signal<Propietario[]>([]);
   readonly veterinarians = signal<Veterinarian[]>([]);
@@ -53,6 +57,20 @@ export class ConsultasComponent {
     const currentId = this.editing()?.veterinarian;
     return this.veterinarians().filter((vet) => vet.is_active || vet.id === currentId);
   });
+  readonly availableAppointments = computed(() => {
+    const currentAppointmentId = this.editing()?.appointment;
+    const usedAppointmentIds = new Set(
+      this.consultations()
+        .filter((item) => item.id !== this.editing()?.id && item.appointment !== null)
+        .flatMap((item) => item.appointment === null ? [] : [item.appointment])
+    );
+    return this.appointments().filter(
+      (item) =>
+        item.is_active &&
+        item.status !== 'CANCELLED' &&
+        (!usedAppointmentIds.has(item.id) || item.id === currentAppointmentId)
+    );
+  });
   currentConsultation: ConsultaPayload = this.emptyConsultation();
   selectedDetails: Consulta | null = null;
 
@@ -65,12 +83,14 @@ export class ConsultasComponent {
     this.error.set(null);
     forkJoin({
       consultations: this.api.getConsultas(),
+      appointments: this.appointmentsApi.list(),
       pets: this.petsApi.getMascotas(),
       owners: this.ownersApi.list(),
       veterinarians: this.veterinariansApi.list(),
     }).subscribe({
       next: (data) => {
         this.consultations.set(data.consultations);
+        this.appointments.set(data.appointments);
         this.pets.set(data.pets);
         this.owners.set(data.owners);
         this.veterinarians.set(data.veterinarians);
@@ -126,6 +146,15 @@ export class ConsultasComponent {
     this.detailsVisible.set(true);
   }
 
+  selectAppointment(appointmentId: number | null): void {
+    this.currentConsultation.appointment = appointmentId;
+    if (appointmentId === null) return;
+    const appointment = this.appointments().find((item) => item.id === appointmentId);
+    if (!appointment) return;
+    this.currentConsultation.pet = appointment.pet;
+    this.currentConsultation.veterinarian = appointment.veterinarian;
+  }
+
   save(): void {
     const form = this.currentConsultation;
     if (!form.pet || !form.veterinarian || !form.title.trim() || !form.symptoms.trim() || !form.diagnosis.trim()) return;
@@ -151,15 +180,15 @@ export class ConsultasComponent {
 
   remove(item: Consulta): void {
     this.confirmation.confirm({
-      header: 'Eliminar consulta',
-      message: `¿Eliminar la consulta «${item.title}» de ${this.petName(item.pet)}?`,
+      header: 'Dar de baja consulta',
+      message: `¿Dar de baja la consulta «${item.title}» de ${this.petName(item.pet)}? Se conservará el historial clínico.`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Eliminar',
+      acceptLabel: 'Dar de baja',
       rejectLabel: 'Cancelar',
       accept: () =>
         this.api.deleteConsulta(item.id).subscribe({
           next: () => {
-            this.notify.warn('Consulta eliminada');
+            this.notify.warn('Consulta dada de baja');
             this.load();
           },
           error: (err: unknown) =>

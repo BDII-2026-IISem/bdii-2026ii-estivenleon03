@@ -20,7 +20,7 @@
       <label for="p-telefono" class="text-sm font-semibold text-slate-200">Teléfono</label>
       <input id="p-telefono" pInputText formControlName="telefono" class="w-full bg-slate-800 text-white border-slate-600" placeholder="3001234567" />
       @if (form.controls.telefono.touched && form.controls.telefono.invalid) {
-        <p-message severity="error" size="small" variant="simple">Formato inválido (de 7 a 30 caracteres numéricos).</p-message>
+        <p-message severity="error" size="small" variant="simple">Formato inválido (de 7 a 20 caracteres numéricos).</p-message>
       }
     </div>
   </div>

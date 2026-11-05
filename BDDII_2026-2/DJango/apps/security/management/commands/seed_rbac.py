@@ -19,7 +19,7 @@ class Command(BaseCommand):
             "users", "roles", "permissions", "user-roles", "role-permissions",
             "owners", "pets", "veterinarians", "appointments", "consultations",
             "prescriptions", "vaccines", "vaccine-batches", "vaccine-applications",
-            "product-types", "products", "sales", "payments", "payment-audits",
+            "product-types", "products", "sales", "payments",
         )
         sample_endpoints = []
         for collection in collections:
@@ -32,6 +32,8 @@ class Command(BaseCommand):
         sample_endpoints.extend([
             ("GET", "/api/v1/products/available/"),
             ("POST", "/api/v1/sales/1/payments/"),
+            ("GET", "/api/v1/payment-audits/"),
+            ("GET", "/api/v1/payment-audits/1/"),
         ])
 
         with transaction.atomic():
@@ -58,19 +60,25 @@ class Command(BaseCommand):
                 )
                 count += 1
 
+            RolePermission.objects.filter(
+                role=admin_role,
+                permission__resource__in=(
+                    "/api/v1/payment-audits",
+                    "/api/v1/payment-audits/:id",
+                ),
+            ).exclude(permission__http_method="GET").delete()
+
             username = options.get("username")
             if username:
                 auth_user = get_user_model().objects.filter(username=username).first()
                 if auth_user is None:
                     raise CommandError(f"Usuario Django {username} no encontrado.")
-                rbac_user = (
-                    User.objects.filter(email__iexact=auth_user.email, is_active=True).first()
+                legacy_user = User.objects.filter(auth_user=auth_user, is_active=True).first()
+                UserRole.objects.get_or_create(
+                    auth_user=auth_user,
+                    role=admin_role,
+                    defaults={"user": legacy_user, "is_active": True},
                 )
-                if rbac_user is None:
-                    raise CommandError(
-                        f"No existe un usuario RBAC activo asociado a {username}."
-                    )
-                UserRole.objects.get_or_create(user=rbac_user, role=admin_role)
                 self.stdout.write(self.style.SUCCESS(
                     f"Rol ADMIN asignado al usuario {username}."
                 ))

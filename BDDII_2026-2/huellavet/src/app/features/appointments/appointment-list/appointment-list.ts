@@ -167,15 +167,15 @@ export class AppointmentList {
 
   remove(item: Appointment): void {
     this.confirmation.confirm({
-      header: 'Eliminar cita',
-      message: `¿Eliminar la cita de ${this.petName(item.pet)}?`,
+      header: 'Cancelar cita',
+      message: `¿Cancelar la cita de ${this.petName(item.pet)}? Se conservará en el historial.`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Eliminar',
+      acceptLabel: 'Cancelar cita',
       rejectLabel: 'Cancelar',
       accept: () =>
         this.api.remove(item.id).subscribe({
           next: () => {
-            this.notify.warn('Cita eliminada');
+            this.notify.warn('Cita cancelada');
             this.load();
           },
           error: (err: unknown) => this.notify.error('No se pudo eliminar la cita', toApiMessage(err)),

@@ -1,115 +1,110 @@
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
-from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import get_user_model
+from rest_framework import status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .models import Role, Permission, UserRole, RolePermission
-from .models import User as RBACUser
-from .serializers import (
-    UserSerializer,
-    RoleSerializer,
+from apps.common.status import RecordStatus
+from apps.security.models import Permission, Role, RolePermission, UserRole
+from apps.security.serializers import (
     PermissionSerializer,
-    UserRoleSerializer,
+    ProfileSerializer,
     RolePermissionSerializer,
+    RoleSerializer,
+    UserRoleSerializer,
+    UserSerializer,
 )
 
 User = get_user_model()
 
-# --- LOGIN INTACTO ---
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['username'].required = False
-        self.fields['password'].required = False
 
-    def validate(self, attrs):
-        data = self.initial_data
-        identifier = data.get("username") or data.get("email") or data.get("identifier")
-        password = data.get("password")
+class ProfileAPIView(RetrieveUpdateAPIView):
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "patch", "head", "options"]
 
-        if not identifier or not password:
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({"detail": "Debe proporcionar usuario/correo y contraseña."})
+    def get_object(self):
+        return self.request.user
 
-        if "@" in identifier:
-            try:
-                user_obj = User.objects.get(email=identifier)
-                identifier = user_obj.username
-            except User.DoesNotExist:
-                pass
 
-        attrs["username"] = identifier
-        attrs["password"] = password
+class SoftDeleteModelViewSet(viewsets.ModelViewSet):
+    lookup_value_converter = "int"
 
-        return super().validate(attrs)
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        status_value = self.request.query_params.get("status")
+        if status_value in (RecordStatus.ACTIVE, RecordStatus.INACTIVE):
+            queryset = queryset.filter(is_active=status_value == RecordStatus.ACTIVE)
+        return queryset
 
-class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
 
-login_view = CustomTokenObtainPairView.as_view()
 
-# --- VIEWSETS DE SEGURIDAD ---
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+class UserViewSet(SoftDeleteModelViewSet):
+    queryset = User.objects.all().order_by("id")
     serializer_class = UserSerializer
 
-class RoleViewSet(viewsets.ModelViewSet):
-    queryset = Role.objects.all()
+    @action(detail=True, methods=["get"], url_path="permissions")
+    def permissions(self, request, pk=None):
+        user = self.get_object()
+        if user.pk != request.user.pk and not request.user.is_staff:
+            return Response(
+                {"detail": "No tiene autorización para consultar este perfil."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response({"permissions": _effective_permissions(user)})
+
+
+class RoleViewSet(SoftDeleteModelViewSet):
+    queryset = Role.objects.all().order_by("id")
     serializer_class = RoleSerializer
 
-class PermissionViewSet(viewsets.ModelViewSet):
-    queryset = Permission.objects.all()
+
+class PermissionViewSet(SoftDeleteModelViewSet):
+    queryset = Permission.objects.all().order_by("id")
     serializer_class = PermissionSerializer
 
-class UserRoleViewSet(viewsets.ModelViewSet):
-    queryset = UserRole.objects.all()
+
+class UserRoleViewSet(SoftDeleteModelViewSet):
+    queryset = UserRole.objects.select_related("role", "auth_user")
     serializer_class = UserRoleSerializer
 
-class RolePermissionViewSet(viewsets.ModelViewSet):
-    queryset = RolePermission.objects.all()
+
+class RolePermissionViewSet(SoftDeleteModelViewSet):
+    queryset = RolePermission.objects.select_related("role", "permission")
     serializer_class = RolePermissionSerializer
 
 
-# --- ENDPOINT DE PERMISOS FORMATO EffectivePermission ---
-@api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([permissions.IsAuthenticated])
-def user_permissions_view(request):
-    rbac_user = RBACUser.objects.filter(
-        email__iexact=request.user.email,
+def _effective_permissions(user):
+    assignments = RolePermission.objects.filter(
         is_active=True,
-    ).first()
-    if rbac_user is None:
-        return Response({'permissions': []}, status=status.HTTP_200_OK)
-
-    role_ids = UserRole.objects.filter(user=rbac_user).values_list('role_id', flat=True)
-    role_permissions = RolePermission.objects.filter(
-        role_id__in=role_ids,
-    ).select_related('role', 'permission')
-    effective_permissions = [
+        role__is_active=True,
+        permission__is_active=True,
+        role__user_assignments__auth_user=user,
+        role__user_assignments__is_active=True,
+    ).select_related("role", "permission")
+    return [
         {
-            'method': assignment.permission.http_method,
-            'path': assignment.permission.resource,
-            'roleId': assignment.role_id,
-            'roleName': assignment.role.name,
+            "method": assignment.permission.http_method,
+            "path": assignment.permission.resource,
+            "roleId": assignment.role_id,
+            "roleName": assignment.role.name,
         }
-        for assignment in role_permissions
+        for assignment in assignments
     ]
 
-    return Response({
-        'permissions': effective_permissions
-    }, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_permissions_view(request):
+    return Response({"permissions": _effective_permissions(request.user)})
 
 
-@api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([permissions.IsAuthenticated])
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def user_profile_view(request):
     serializer = UserSerializer(request.user)
-    data = serializer.data
-    data['status'] = 'ACTIVE'
-    data['avatar'] = None
-    return Response(data, status=status.HTTP_200_OK)
+    return Response(serializer.data)

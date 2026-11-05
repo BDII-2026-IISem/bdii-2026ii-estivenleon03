@@ -1,10 +1,20 @@
 from django.db import models
+from django.conf import settings
 from apps.common.models import BaseModel
 
 class User(BaseModel):
+    id = models.AutoField(primary_key=True, verbose_name='ID')
     name = models.CharField(max_length=120)
     email = models.EmailField(max_length=120, unique=True)
     password_hash = models.CharField(max_length=255)
+    auth_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        db_column='auth_user_id',
+        null=True,
+        blank=True,
+        related_name='legacy_accounts',
+    )
 
     class Meta:
         db_table = 'users'
@@ -16,9 +26,26 @@ class User(BaseModel):
         return f"{self.name} ({self.email})"
 
 
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='huellavet_profile',
+    )
+    avatar = models.URLField(max_length=500, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'security_user_profiles'
+        verbose_name = 'Perfil de usuario'
+        verbose_name_plural = 'Perfiles de usuario'
+
+
 class Role(models.Model):
     name = models.CharField(max_length=50, unique=True)
     description = models.CharField(max_length=255, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
@@ -35,6 +62,7 @@ class Permission(models.Model):
     resource = models.CharField(max_length=100)
     http_method = models.CharField(max_length=10)
     description = models.CharField(max_length=255, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'permissions'
@@ -47,18 +75,50 @@ class Permission(models.Model):
 
 
 class UserRole(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='user_id')
-    role = models.ForeignKey(Role, on_delete=models.CASCADE, db_column='role_id')
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        db_column='user_id',
+        null=True,
+        blank=True,
+        related_name='legacy_role_assignments',
+    )
+    auth_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_column='auth_user_id',
+        null=True,
+        blank=True,
+        related_name='huellavet_role_assignments',
+    )
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.CASCADE,
+        db_column='role_id',
+        related_name='user_assignments',
+    )
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'user_roles'
-        unique_together = (('user', 'role'),)
+        unique_together = (('user', 'role'), ('auth_user', 'role'))
         app_label = 'security'
 
 
 class RolePermission(models.Model):
-    role = models.ForeignKey(Role, on_delete=models.CASCADE, db_column='role_id')
-    permission = models.ForeignKey(Permission, on_delete=models.CASCADE, db_column='permission_id')
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.CASCADE,
+        db_column='role_id',
+        related_name='permission_assignments',
+    )
+    permission = models.ForeignKey(
+        Permission,
+        on_delete=models.CASCADE,
+        db_column='permission_id',
+        related_name='role_assignments',
+    )
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'role_permissions'

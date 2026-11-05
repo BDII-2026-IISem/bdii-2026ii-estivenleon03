@@ -9,6 +9,7 @@ import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { Propietario } from '../../../core/models/propietario.model';
 import { Product } from '../../../core/models/product.model';
+import { Mascota } from '../../../core/models/mascota.model';
 import { PaymentMethod, SaleCreatePayload } from '../../../core/models/sale.model';
 import { toIsoWithOffset } from '../../../core/utils/sale-date';
 
@@ -40,6 +41,7 @@ export interface DraftLine {
 })
 export class SaleForm {
   readonly clients = input<Propietario[]>([]);
+  readonly pets = input<Mascota[]>([]);
   readonly products = input<Product[]>([]);
   readonly resetKey = input(0);
   readonly saving = input(false);
@@ -49,6 +51,7 @@ export class SaleForm {
   readonly cancelled = output<void>();
 
   readonly clientId = signal<number | null>(null);
+  readonly petId = signal<number | null>(null);
   readonly saleDate = signal<Date>(new Date());
   readonly discounts = signal<number>(0);
   readonly paymentMethod = signal<PaymentMethod>('CASH');
@@ -58,6 +61,9 @@ export class SaleForm {
 
   readonly lines = signal<DraftLine[]>([]);
   readonly draftError = signal<string | null>(null);
+  readonly availablePets = computed(() =>
+    this.pets().filter((pet) => pet.owner === this.clientId() && pet.is_active)
+  );
 
   readonly subtotal = computed(() =>
     this.lines().reduce((acc, l) => acc + l.lineTotal, 0)
@@ -73,6 +79,7 @@ export class SaleForm {
     effect(() => {
       this.resetKey();
       this.clientId.set(null);
+      this.petId.set(null);
       this.saleDate.set(new Date());
       this.discounts.set(0);
       this.paymentMethod.set('CASH');
@@ -131,6 +138,11 @@ export class SaleForm {
     this.inputQuantity.set(1);
   }
 
+  selectClient(clientId: number | null): void {
+    this.clientId.set(clientId);
+    this.petId.set(null);
+  }
+
   removeLine(index: number): void {
     this.lines.update((old) => old.filter((_, i) => i !== index));
   }
@@ -161,6 +173,7 @@ export class SaleForm {
 
     const payload: SaleCreatePayload = {
       clientId: this.clientId()!,
+      petId: this.petId(),
       saleDate: toIsoWithOffset(this.saleDate()),
       discounts: (this.discounts() || 0).toFixed(2),
       items: this.lines().map((l) => ({ productId: l.productId, quantity: l.quantity })),

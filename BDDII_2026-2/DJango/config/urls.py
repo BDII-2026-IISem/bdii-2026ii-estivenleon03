@@ -6,17 +6,18 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework.permissions import AllowAny
 
+from apps.security.auth_views import LoginAPIView, LogoutAPIView, RefreshAPIView
 from apps.security.views import (
+    ProfileAPIView,
     UserViewSet,
     RoleViewSet,
     PermissionViewSet,
     UserRoleViewSet,
     RolePermissionViewSet,
-    user_permissions_view,
-    user_profile_view,
 )
+from apps.security.views import user_permissions_view
 from apps.patient.views import OwnerViewSet, PetViewSet
 from apps.staff.views import VeterinarianViewSet
 from apps.appointment.views import AppointmentViewSet
@@ -53,23 +54,33 @@ urlpatterns = [
     path('api/v1/', include(router.urls)),
     
     # Autenticación, Permisos y Perfil bajo /api/v1/auth/
-    path('api/v1/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair_v1'),
+    path('api/v1/auth/login/', LoginAPIView.as_view(), name='token_obtain_pair_v1'),
+    path('api/v1/auth/logout/', LogoutAPIView.as_view(), name='token_blacklist_v1'),
     path('api/v1/auth/permissions/', user_permissions_view, name='auth-permissions-v1'),
-    path('api/v1/auth/profile/', user_profile_view, name='auth-profile-v1'),
-    path('api/v1/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh_v1'),
+    path('api/v1/auth/profile/', ProfileAPIView.as_view(), name='auth-profile-v1'),
+    path('api/v1/auth/refresh/', RefreshAPIView.as_view(), name='token_refresh_v1'),
 
     # Rutas bajo /api/auth/ para compatibilidad
-    path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/login/', LoginAPIView.as_view(), name='token_obtain_pair'),
+    path('api/auth/logout/', LogoutAPIView.as_view(), name='token_blacklist'),
     path('api/auth/permissions/', user_permissions_view, name='auth-permissions'),
-    path('api/auth/profile/', user_profile_view, name='auth-profile'),
-    path('api/auth/refresh/', TokenRefreshView.as_view(), name='auth-refresh'),
+    path('api/auth/profile/', ProfileAPIView.as_view(), name='auth-profile'),
+    path('api/auth/refresh/', RefreshAPIView.as_view(), name='auth-refresh'),
 
     # Documentación Swagger
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('api/schema/', SpectacularAPIView.as_view(permission_classes=[AllowAny]), name='schema'),
+    path(
+        'api/schema/swagger-ui/',
+        SpectacularSwaggerView.as_view(url_name='schema', permission_classes=[AllowAny]),
+        name='swagger-ui',
+    ),
+    path(
+        'api/schema/redoc/',
+        SpectacularRedocView.as_view(url_name='schema', permission_classes=[AllowAny]),
+        name='redoc',
+    ),
     
     # Fallback Directo de Tokens
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair_direct'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh_direct'),
+    path('api/token/', LoginAPIView.as_view(), name='token_obtain_pair_direct'),
+    path('api/token/refresh/', RefreshAPIView.as_view(), name='token_refresh_direct'),
 ]

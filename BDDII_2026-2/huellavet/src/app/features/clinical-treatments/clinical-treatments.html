@@ -13,6 +13,52 @@
   <section class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
+        <h2 class="text-xl font-semibold text-white">Catálogo de vacunas</h2>
+        <p class="text-sm text-slate-400">Vacunas y lotes disponibles para las aplicaciones clínicas.</p>
+      </div>
+      <div class="flex gap-2">
+        <button pButton type="button" severity="secondary" (click)="openNewVaccine()">
+          <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nueva vacuna</span>
+        </button>
+        <button pButton type="button" severity="success" (click)="openNewBatch()" [disabled]="vaccines().length === 0">
+          <i pButtonIcon class="pi pi-box"></i><span pButtonLabel>Nuevo lote</span>
+        </button>
+      </div>
+    </div>
+    <p-table [value]="vaccines()" [loading]="loading()" dataKey="id" [paginator]="vaccines().length > 10" [rows]="10">
+      <ng-template #header>
+        <tr><th>Vacuna</th><th>Descripción</th><th>Estado</th><th class="text-right">Acciones</th></tr>
+      </ng-template>
+      <ng-template #body let-item>
+        <tr>
+          <td>{{ item.name }}</td><td>{{ item.description || '—' }}</td>
+          <td><p-tag [value]="item.is_active ? 'Activa' : 'Inactiva'" [severity]="item.is_active ? 'success' : 'secondary'" /></td>
+          <td class="text-right"><button pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar vacuna" (click)="editVaccine(item)"></button></td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage><tr><td colspan="4" class="py-6 text-center text-slate-400">No hay vacunas registradas.</td></tr></ng-template>
+    </p-table>
+
+    <h3 class="pt-3 text-lg font-semibold text-white">Lotes de vacunas</h3>
+    <p-table [value]="batches()" [loading]="loading()" dataKey="id" [paginator]="batches().length > 10" [rows]="10">
+      <ng-template #header>
+        <tr><th>Vacuna / lote</th><th>Vencimiento</th><th>Existencias</th><th>Estado</th><th class="text-right">Acciones</th></tr>
+      </ng-template>
+      <ng-template #body let-item>
+        <tr>
+          <td><p>{{ vaccineName(item.vaccine) }} · {{ item.name }}</p><p class="text-xs text-slate-400">Lote {{ item.batch_number }}</p></td>
+          <td>{{ item.expiration_date }}</td><td>{{ item.stock_quantity }}</td>
+          <td><p-tag [value]="item.is_active ? 'Activo' : 'Inactivo'" [severity]="item.is_active ? 'success' : 'secondary'" /></td>
+          <td class="text-right"><button pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar lote" (click)="editBatch(item)"></button></td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage><tr><td colspan="5" class="py-6 text-center text-slate-400">No hay lotes registrados.</td></tr></ng-template>
+    </p-table>
+  </section>
+
+  <section class="space-y-4">
+    <div class="flex items-center justify-between">
+      <div>
         <h2 class="text-xl font-semibold text-white">Prescripciones</h2>
         <p class="text-sm text-slate-400">Medicamentos asociados a una consulta existente.</p>
       </div>
@@ -122,7 +168,12 @@
         </select>
       </label>
       <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Lote disponible
-        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.vaccine_batch" required>
+        <select
+          class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white"
+          [ngModel]="vaccineForm.vaccine_batch"
+          (ngModelChange)="selectVaccineBatch($event)"
+          required
+        >
           <option [ngValue]="0" disabled>Selecciona un lote</option>
           @for (batch of availableBatches(); track batch.id) {
             <option [ngValue]="batch.id">{{ vaccineName(batch.vaccine) }} · {{ batch.name }} · #{{ batch.batch_number }} · {{ batch.stock_quantity }} dosis · vence {{ batch.expiration_date }}</option>
@@ -130,7 +181,7 @@
         </select>
       </label>
       <label class="flex flex-col gap-1 text-sm text-slate-200">Nombre de vacuna aplicada
-        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.name" required maxlength="100" />
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.name" readonly required maxlength="100" />
       </label>
       <label class="flex flex-col gap-1 text-sm text-slate-200">Dosis (ml)
         <input type="number" min="0.01" step="0.01" class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineForm.dosage_ml" required />
@@ -147,6 +198,63 @@
       <button pButton type="button" severity="success" [disabled]="saving() || !vaccineForm.consultation || !vaccineForm.vaccine_batch || !vaccineForm.name.trim()" (click)="saveVaccineApplication()">
         {{ saving() ? 'Guardando…' : 'Registrar aplicación' }}
       </button>
+    </ng-template>
+  </p-dialog>
+
+  <p-dialog [visible]="vaccineCatalogDialog()" (visibleChange)="vaccineCatalogDialog.set($event)" [header]="editingVaccine() ? 'Editar vacuna' : 'Nueva vacuna'" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-xl mx-4">
+    <div class="grid gap-4 py-2">
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Nombre
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineCatalogForm.name" required maxlength="100" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Descripción
+        <textarea class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineCatalogForm.description" rows="3"></textarea>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Estado
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="vaccineCatalogForm.is_active">
+          <option [ngValue]="true">Activa</option><option [ngValue]="false">Inactiva</option>
+        </select>
+      </label>
+    </div>
+    <ng-template #footer>
+      <button pButton type="button" severity="secondary" text (click)="vaccineCatalogDialog.set(false)">Cancelar</button>
+      <button pButton type="button" severity="success" [disabled]="saving() || !vaccineCatalogForm.name.trim()" (click)="saveVaccine()">{{ saving() ? 'Guardando…' : 'Guardar' }}</button>
+    </ng-template>
+  </p-dialog>
+
+  <p-dialog [visible]="batchDialog()" (visibleChange)="batchDialog.set($event)" [header]="editingBatch() ? 'Editar lote' : 'Nuevo lote'" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-xl mx-4">
+    <div class="grid gap-4 py-2 sm:grid-cols-2">
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Vacuna
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="batchForm.vaccine" required>
+          <option [ngValue]="0" disabled>Selecciona una vacuna</option>
+          @for (vaccine of vaccines(); track vaccine.id) {
+            <option [ngValue]="vaccine.id">{{ vaccine.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Nombre del lote
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="batchForm.name" required maxlength="100" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Número de lote
+        <input class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="batchForm.batch_number" required maxlength="50" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Fecha de vencimiento
+        <input type="date" class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="batchForm.expiration_date" required />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Dosis disponibles
+        <input type="number" min="0" step="1" class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="batchForm.stock_quantity" required />
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200">Estado
+        <select class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="batchForm.is_active">
+          <option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm text-slate-200 sm:col-span-2">Descripción
+        <textarea class="rounded-md border border-slate-600 bg-slate-800 p-2 text-white" [(ngModel)]="batchForm.description" rows="2"></textarea>
+      </label>
+    </div>
+    <ng-template #footer>
+      <button pButton type="button" severity="secondary" text (click)="batchDialog.set(false)">Cancelar</button>
+      <button pButton type="button" severity="success" [disabled]="saving() || !batchForm.vaccine || !batchForm.name.trim() || !batchForm.batch_number.trim() || !batchForm.expiration_date || batchForm.stock_quantity < 0" (click)="saveBatch()">{{ saving() ? 'Guardando…' : 'Guardar lote' }}</button>
     </ng-template>
   </p-dialog>
 </div>

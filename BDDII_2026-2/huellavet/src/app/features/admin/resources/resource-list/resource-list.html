@@ -1,5 +1,5 @@
 <app-page-header title="Catálogo de Recursos" subtitle="Definición de endpoints protegidos.">
-  <button *appHasPermission="'POST /api/resources'" pButton type="button" severity="success" (click)="openCreate()">
+  <button *appHasPermission="'POST /api/v1/permissions'" pButton type="button" severity="success" (click)="openCreate()">
     <i pButtonIcon class="pi pi-plus"></i>
     <span pButtonLabel>Nuevo Recurso</span>
   </button>
@@ -39,8 +39,8 @@
         <app-status-tag [status]="row.status" />
       </td>
       <td class="text-right">
-        <button *appHasPermission="'PATCH /api/resources/:id'" pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar" pTooltip="Editar" (click)="openEdit(row)"></button>
-        <button *appHasPermission="'DELETE /api/resources/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Desactivar" pTooltip="Desactivar" (click)="remove(row)"></button>
+        <button *appHasPermission="'PATCH /api/v1/permissions/:id'" pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar" pTooltip="Editar" (click)="openEdit(row)"></button>
+        <button *appHasPermission="'DELETE /api/v1/permissions/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Desactivar" pTooltip="Desactivar" (click)="remove(row)"></button>
       </td>
     </tr>
   </ng-template>

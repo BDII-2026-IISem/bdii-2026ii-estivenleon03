@@ -51,6 +51,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
             instance.status if instance else Appointment.StatusChoices.SCHEDULED,
         )
         is_active = attrs.get('is_active', instance.is_active if instance else True)
+        is_schedulable = (
+            is_active and status_value in self.ACTIVE_STATUSES
+        )
+        is_becoming_schedulable = is_schedulable and (
+            instance is None
+            or not instance.is_active
+            or instance.status not in self.ACTIVE_STATUSES
+        )
 
         errors = self._schedule_errors(
             pet,
@@ -59,9 +67,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
             end_time,
             status_value,
             is_active,
-            validate_pet=('pet' in attrs or instance is None),
+            validate_pet=(
+                'pet' in attrs or instance is None or is_becoming_schedulable
+            ),
             validate_veterinarian=(
-                'veterinarian' in attrs or instance is None
+                'veterinarian' in attrs
+                or instance is None
+                or is_becoming_schedulable
             ),
             exclude_pk=instance.pk if instance else None,
         )
@@ -167,6 +179,15 @@ class AppointmentSerializer(serializers.ModelSerializer):
         is_active = validated_data.get(
             'is_active', instance.is_active if instance else True
         )
+        is_becoming_schedulable = (
+            is_active
+            and status_value in self.ACTIVE_STATUSES
+            and (
+                instance is None
+                or not instance.is_active
+                or instance.status not in self.ACTIVE_STATUSES
+            )
+        )
         errors = self._schedule_errors(
             pet,
             veterinarian,
@@ -174,9 +195,15 @@ class AppointmentSerializer(serializers.ModelSerializer):
             end_time,
             status_value,
             is_active,
-            validate_pet=('pet' in validated_data or instance is None),
+            validate_pet=(
+                'pet' in validated_data
+                or instance is None
+                or is_becoming_schedulable
+            ),
             validate_veterinarian=(
-                'veterinarian' in validated_data or instance is None
+                'veterinarian' in validated_data
+                or instance is None
+                or is_becoming_schedulable
             ),
             exclude_pk=instance.pk if instance else None,
         )

@@ -33,7 +33,7 @@
         <td><p-tag [value]="pet.is_active ? 'Activo' : 'Inactivo'" [severity]="pet.is_active ? 'success' : 'secondary'" /></td>
         <td class="text-right">
           <button pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar mascota" (click)="openEdit(pet)"></button>
-          <button pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Eliminar mascota" (click)="remove(pet)"></button>
+          <button pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Dar de baja mascota" (click)="remove(pet)"></button>
         </td>
       </tr>
     </ng-template>

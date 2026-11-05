@@ -1,9 +1,13 @@
 from datetime import datetime
 
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
+from django.contrib.auth import get_user_model
 
 from apps.appointment.models import Appointment
+from apps.appointment.serializers import AppointmentSerializer
+from apps.clinical.models import Consultation
 from apps.patient.models import Owner, Pet
 from apps.staff.models import Veterinarian
 
@@ -12,6 +16,12 @@ class AppointmentApiTests(APITestCase):
     endpoint = '/api/v1/appointments/'
 
     def setUp(self):
+        admin = get_user_model().objects.create_superuser(
+            username='appointment-admin',
+            email='appointment-admin@example.com',
+            password='test-password',
+        )
+        self.client.force_authenticate(user=admin)
         owner = Owner.objects.create(
             name='Pet owner',
             doc_type='CC',
@@ -164,3 +174,134 @@ class AppointmentApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         second.refresh_from_db()
         self.assertEqual(second.pet_id, self.other_pet.pk)
+
+    def test_reactivation_rejects_inactive_pet_or_veterinarian(self):
+        appointment = Appointment.objects.create(
+            pet=self.pet,
+            veterinarian=self.veterinarian,
+            start_time=datetime.fromisoformat('2026-10-30T09:00:00-05:00'),
+            end_time=datetime.fromisoformat('2026-10-30T10:00:00-05:00'),
+            reason='Cancelled appointment',
+            is_active=False,
+        )
+        self.pet.is_active = False
+        self.pet.save(update_fields=['is_active'])
+
+        inactive_pet = self.client.patch(
+            f'{self.endpoint}{appointment.pk}/',
+            {'is_active': True},
+            format='json',
+        )
+        self.assertEqual(inactive_pet.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('pet', inactive_pet.data)
+
+        self.pet.is_active = True
+        self.pet.save(update_fields=['is_active'])
+        self.veterinarian.is_active = False
+        self.veterinarian.save(update_fields=['is_active'])
+        inactive_veterinarian = self.client.patch(
+            f'{self.endpoint}{appointment.pk}/',
+            {'status': Appointment.StatusChoices.CONFIRMED},
+            format='json',
+        )
+        self.assertEqual(
+            inactive_veterinarian.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertIn('veterinarian', inactive_veterinarian.data)
+        appointment.refresh_from_db()
+        self.assertFalse(appointment.is_active)
+
+    def test_reactivation_rechecks_participant_state_when_saving(self):
+        appointment = Appointment.objects.create(
+            pet=self.pet,
+            veterinarian=self.veterinarian,
+            start_time=datetime.fromisoformat('2026-10-30T09:00:00-05:00'),
+            end_time=datetime.fromisoformat('2026-10-30T10:00:00-05:00'),
+            reason='Cancelled appointment',
+            is_active=False,
+        )
+        serializer = AppointmentSerializer(
+            instance=appointment,
+            data={'is_active': True},
+            partial=True,
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        self.pet.is_active = False
+        self.pet.save(update_fields=['is_active'])
+
+        with self.assertRaisesMessage(ValidationError, 'Select an active pet.'):
+            serializer.save()
+
+        appointment.refresh_from_db()
+        self.assertFalse(appointment.is_active)
+
+    def test_reactivation_checks_for_schedule_conflicts(self):
+        Appointment.objects.create(
+            pet=self.pet,
+            veterinarian=self.veterinarian,
+            start_time=datetime.fromisoformat('2026-10-30T09:00:00-05:00'),
+            end_time=datetime.fromisoformat('2026-10-30T10:00:00-05:00'),
+            reason='Existing appointment',
+        )
+        cancelled = Appointment.objects.create(
+            pet=self.other_pet,
+            veterinarian=self.veterinarian,
+            start_time=datetime.fromisoformat('2026-10-30T09:30:00-05:00'),
+            end_time=datetime.fromisoformat('2026-10-30T10:30:00-05:00'),
+            reason='Cancelled appointment',
+            is_active=False,
+        )
+
+        response = self.client.patch(
+            f'{self.endpoint}{cancelled.pk}/',
+            {'is_active': True},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('non_field_errors', response.data)
+        cancelled.refresh_from_db()
+        self.assertFalse(cancelled.is_active)
+
+    def test_deleting_appointment_cancels_logically_and_keeps_payment_history(self):
+        from apps.billing.models import Payment
+
+        appointment = Appointment.objects.create(
+            pet=self.pet,
+            veterinarian=self.veterinarian,
+            start_time=datetime.fromisoformat('2026-10-30T09:00:00-05:00'),
+            end_time=datetime.fromisoformat('2026-10-30T10:00:00-05:00'),
+            reason='Consultation appointment',
+        )
+        consultation = Consultation.objects.create(
+            appointment=appointment,
+            pet=self.pet,
+            veterinarian=self.veterinarian,
+            symptoms='Symptoms',
+            diagnosis='Diagnosis',
+        )
+        payment = Payment.objects.create(
+            appointment=appointment,
+            reference_type='APPOINTMENT',
+            reference_id=appointment.pk,
+            method=Payment.MethodChoices.CASH,
+            amount='25.00',
+        )
+
+        response = self.client.delete(
+            f'{self.endpoint}{appointment.pk}/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        appointment.refresh_from_db()
+        payment.refresh_from_db()
+        consultation.refresh_from_db()
+        self.assertFalse(appointment.is_active)
+        self.assertEqual(
+            appointment.status,
+            Appointment.StatusChoices.CANCELLED,
+        )
+        self.assertEqual(payment.appointment_id, appointment.pk)
+        self.assertEqual(consultation.appointment_id, appointment.pk)

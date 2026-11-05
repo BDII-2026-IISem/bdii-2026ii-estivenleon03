@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { environment } from '../../../../environments/environment';
 import { User } from '../../../core/models/user.model';
 import { UserApi } from './user-api';
 
@@ -30,7 +31,7 @@ describe('UserApi', () => {
     let rows: User[] = [];
     api.list().subscribe((data) => (rows = data));
 
-    const req = http.expectOne('http://localhost:8000/api/users/');
+    const req = http.expectOne(`${environment.apiUrl}/users/`);
     req.flush([MOCK_USER]);
 
     expect(Object.keys(rows[0])).not.toContain('password');
@@ -41,7 +42,7 @@ describe('UserApi', () => {
       .update(1, { username: 'admin', email: 'admin@test.com', avatar: null, status: 'active' })
       .subscribe();
 
-    const patch = http.expectOne('http://localhost:8000/api/users/1/');
+    const patch = http.expectOne(`${environment.apiUrl}/users/1/`);
     expect(patch.request.method).toBe('PATCH');
     expect('password' in (patch.request.body as object)).toBe(false);
     patch.flush(MOCK_USER);

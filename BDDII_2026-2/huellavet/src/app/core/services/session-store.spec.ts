@@ -37,4 +37,23 @@ describe('SessionStore', () => {
     expect(store.canPermission('GET /api/owners')).toBe(false);
     expect(store.roles()).toEqual([]);
   });
+
+  it('no debe asignar alias de endpoints que no están en los permisos', () => {
+    const store = TestBed.inject(SessionStore);
+    store.setTokens({ access: 'a', refresh: 'r' });
+    store.setUser(
+      { id: 2, username: 'operator', email: 'operator@test.com' },
+      [
+        {
+          method: 'POST',
+          path: '/api/v1/permissions/',
+          roleId: 2,
+          roleName: 'OPERATOR',
+        },
+      ]
+    );
+
+    expect(store.canPermission('POST /api/v1/permissions')).toBe(true);
+    expect(store.canPermission('POST /api/resources')).toBe(false);
+  });
 });

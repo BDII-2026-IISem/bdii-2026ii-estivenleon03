@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from apps.common.models import BaseModel
 from apps.security.models import User
 
@@ -8,7 +9,16 @@ class Veterinarian(BaseModel):
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True, 
-        db_column='user_id'
+        db_column='user_id',
+        related_name='legacy_veterinarian_profile',
+    )
+    auth_user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='auth_user_id',
+        related_name='veterinarian_profile',
     )
     name = models.CharField(max_length=120)
     license_number = models.CharField(max_length=50, unique=True, null=True, blank=True)

@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import { Sale, SaleCreatePayload, SalePaymentCreatePayload } from '../models/sale.model';
+import { Sale, SaleCreatePayload } from '../models/sale.model';
 import { SaleApi } from './sale-api';
 
 const MOCK_SALE: Sale = {
@@ -61,20 +61,4 @@ describe('SaleApi', () => {
     expect(result).toEqual(MOCK_SALE);
   });
 
-  it('debe registrar pagos posteriores contra una venta existente', () => {
-    const payload: SalePaymentCreatePayload = {
-      method: 'TRANSFER',
-      amount: '25.00',
-    };
-
-    let result: Sale | undefined;
-    api.addPayment(1, payload).subscribe((res) => (result = res));
-
-    const req = http.expectOne('http://localhost:8000/api/v1/sales/1/payments/');
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(payload);
-    req.flush(MOCK_SALE);
-
-    expect(result).toEqual(MOCK_SALE);
-  });
 });

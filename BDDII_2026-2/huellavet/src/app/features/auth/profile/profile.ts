@@ -31,7 +31,10 @@ export class Profile {
         this.refreshing.set(false);
         this.notify.success('Sesión sincronizada');
       },
-      error: () => this.refreshing.set(false),
+      error: () => {
+        this.refreshing.set(false);
+        this.notify.error('No se pudo sincronizar la sesión');
+      },
     });
   }
 
@@ -39,6 +42,10 @@ export class Profile {
     this.auth.logout().subscribe({
       next: () => {
         this.notify.info('Sesión cerrada');
+        void this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.notify.warn('Sesión local cerrada; no se pudo revocar el token remoto');
         void this.router.navigate(['/login']);
       },
     });

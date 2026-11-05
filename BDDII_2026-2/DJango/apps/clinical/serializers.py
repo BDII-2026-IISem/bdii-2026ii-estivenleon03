@@ -93,6 +93,23 @@ class VaccineSerializer(serializers.ModelSerializer):
         model = Vaccine
         fields = '__all__'
 
+    def validate(self, attrs):
+        is_active = attrs.get(
+            'is_active',
+            self.instance.is_active if self.instance else True,
+        )
+        if (
+            not is_active
+            and self.instance is not None
+            and self.instance.batches.filter(is_active=True).exists()
+        ):
+            raise serializers.ValidationError({
+                'is_active': (
+                    'Desactiva primero los lotes activos asociados a esta vacuna.'
+                ),
+            })
+        return attrs
+
 
 class VaccineBatchSerializer(serializers.ModelSerializer):
     stock_quantity = serializers.IntegerField(
@@ -105,8 +122,25 @@ class VaccineBatchSerializer(serializers.ModelSerializer):
         model = VaccineBatch
         fields = '__all__'
 
+    def validate(self, attrs):
+        vaccine = attrs.get(
+            'vaccine',
+            self.instance.vaccine if self.instance else None,
+        )
+        is_active = attrs.get(
+            'is_active',
+            self.instance.is_active if self.instance else True,
+        )
+        if is_active and vaccine is not None and not vaccine.is_active:
+            raise serializers.ValidationError({
+                'vaccine': 'No se puede activar un lote de una vacuna inactiva.',
+            })
+        return attrs
+
 
 class VaccineApplicationSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(max_length=100, required=False)
+
     class Meta:
         model = VaccineApplication
         fields = '__all__'
@@ -114,6 +148,40 @@ class VaccineApplicationSerializer(serializers.ModelSerializer):
     def validate_vaccine_batch(self, batch):
         self._validate_batch(batch)
         return batch
+
+    def validate_dosage_ml(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                'La dosis aplicada debe ser mayor que cero.'
+            )
+        return value
+
+    def validate_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError(
+                'El nombre de la vacuna aplicada no puede estar vacío.'
+            )
+        return value.strip()
+
+    def validate(self, attrs):
+        batch = attrs.get(
+            'vaccine_batch',
+            self.instance.vaccine_batch if self.instance else None,
+        )
+        name = attrs.get('name', self.instance.name if self.instance else None)
+        if batch is not None:
+            if not batch.vaccine.is_active:
+                raise serializers.ValidationError({
+                    'vaccine_batch': (
+                        'No se puede aplicar una vacuna inactiva.'
+                    ),
+                })
+            if name is not None and name != batch.vaccine.name:
+                raise serializers.ValidationError({
+                    'name': 'El nombre debe corresponder a la vacuna del lote.',
+                })
+            attrs['name'] = batch.vaccine.name
+        return attrs
 
     @staticmethod
     def _validate_batch(batch):

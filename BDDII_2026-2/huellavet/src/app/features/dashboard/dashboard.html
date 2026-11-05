@@ -11,19 +11,27 @@
 
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 my-6">
   <p-card header="Ventas de Hoy">
-    <p class="text-3xl font-bold text-indigo-400">{{ todayPayments().length }}</p>
+    <p class="text-3xl font-bold text-indigo-400">
+      @if (loading()) { — } @else { {{ todaySales().length }} }
+    </p>
   </p-card>
 
-  <p-card header="Total de Hoy">
-    <p class="text-3xl font-bold text-emerald-400">{{ todayTotal() | currency : 'USD' }}</p>
+  <p-card header="Total vendido hoy">
+    <p class="text-3xl font-bold text-emerald-400">
+      @if (loading()) { Cargando… } @else { {{ todayTotal() | currency : 'COP':'symbol-narrow':'1.0-0':'es-CO' }} }
+    </p>
   </p-card>
 
   <p-card header="Insumos Bajo Mínimo">
-    <p class="text-3xl font-bold text-amber-400">{{ lowStockProducts().length }}</p>
+    <p class="text-3xl font-bold text-amber-400">
+      @if (loading()) { — } @else { {{ lowStockProducts().length }} }
+    </p>
   </p-card>
 
   <p-card header="Owners Activos">
-    <p class="text-3xl font-bold text-blue-400">{{ activeClientsCount() }}</p>
+    <p class="text-3xl font-bold text-blue-400">
+      @if (loading()) { — } @else { {{ activeClientsCount() }} }
+    </p>
   </p-card>
 </div>
 

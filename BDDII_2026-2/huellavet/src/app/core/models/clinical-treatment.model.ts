@@ -20,6 +20,8 @@ export interface Vaccine {
   is_active: boolean;
 }
 
+export type VaccinePayload = Omit<Vaccine, 'id'>;
+
 export interface VaccineBatch {
   id: number;
   vaccine: number;
@@ -30,6 +32,8 @@ export interface VaccineBatch {
   stock_quantity: number;
   is_active: boolean;
 }
+
+export type VaccineBatchPayload = Omit<VaccineBatch, 'id'>;
 
 export interface VaccineApplication {
   id: number;

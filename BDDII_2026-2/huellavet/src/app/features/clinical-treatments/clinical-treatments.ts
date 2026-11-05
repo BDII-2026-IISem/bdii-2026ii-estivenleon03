@@ -13,9 +13,11 @@ import {
   Prescription,
   PrescriptionPayload,
   Vaccine,
+  VaccineBatchPayload,
   VaccineApplication,
   VaccineApplicationPayload,
   VaccineBatch,
+  VaccinePayload,
 } from '../../core/models/clinical-treatment.model';
 import { Mascota } from '../../core/models/mascota.model';
 import { ConsultaService } from '../../core/services/consulta.service';
@@ -49,15 +51,25 @@ export class ClinicalTreatments {
   readonly error = signal<string | null>(null);
   readonly prescriptionDialog = signal(false);
   readonly vaccineDialog = signal(false);
+  readonly vaccineCatalogDialog = signal(false);
+  readonly batchDialog = signal(false);
   readonly editingPrescription = signal<Prescription | null>(null);
+  readonly editingVaccine = signal<Vaccine | null>(null);
+  readonly editingBatch = signal<VaccineBatch | null>(null);
   readonly availableBatches = computed(() => {
     const today = new Date().toISOString().slice(0, 10);
     return this.batches().filter(
-      (batch) => batch.is_active && batch.stock_quantity > 0 && batch.expiration_date >= today
+      (batch) =>
+        batch.is_active &&
+        this.vaccines().some((vaccine) => vaccine.id === batch.vaccine && vaccine.is_active) &&
+        batch.stock_quantity > 0 &&
+        batch.expiration_date >= today
     );
   });
   prescriptionForm: PrescriptionPayload = this.emptyPrescription();
   vaccineForm: VaccineApplicationPayload = this.emptyVaccineApplication();
+  vaccineCatalogForm: VaccinePayload = this.emptyVaccine();
+  batchForm: VaccineBatchPayload = this.emptyBatch();
 
   constructor() {
     this.load();
@@ -184,6 +196,13 @@ export class ClinicalTreatments {
     this.vaccineDialog.set(true);
   }
 
+  selectVaccineBatch(batchId: number): void {
+    this.vaccineForm.vaccine_batch = batchId;
+    const batch = this.batches().find((item) => item.id === batchId);
+    const vaccine = this.vaccines().find((item) => item.id === batch?.vaccine);
+    if (vaccine) this.vaccineForm.name = vaccine.name;
+  }
+
   saveVaccineApplication(): void {
     const form = this.vaccineForm;
     if (!form.consultation || !form.vaccine_batch || !form.name.trim()) return;
@@ -198,6 +217,94 @@ export class ClinicalTreatments {
       error: (err: unknown) => {
         this.saving.set(false);
         this.notify.error('No se pudo registrar la aplicación', toApiMessage(err));
+      },
+    });
+  }
+
+  openNewVaccine(): void {
+    this.editingVaccine.set(null);
+    this.vaccineCatalogForm = this.emptyVaccine();
+    this.vaccineCatalogDialog.set(true);
+  }
+
+  editVaccine(item: Vaccine): void {
+    this.editingVaccine.set(item);
+    this.vaccineCatalogForm = {
+      name: item.name,
+      description: item.description,
+      is_active: item.is_active,
+    };
+    this.vaccineCatalogDialog.set(true);
+  }
+
+  saveVaccine(): void {
+    if (!this.vaccineCatalogForm.name.trim()) return;
+    const current = this.editingVaccine();
+    const payload = {
+      ...this.vaccineCatalogForm,
+      name: this.vaccineCatalogForm.name.trim(),
+    };
+    this.saving.set(true);
+    const request = current
+      ? this.api.updateVaccine(current.id, payload)
+      : this.api.createVaccine(payload);
+    request.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.vaccineCatalogDialog.set(false);
+        this.notify.success(current ? 'Vacuna actualizada' : 'Vacuna registrada');
+        this.load();
+      },
+      error: (err: unknown) => {
+        this.saving.set(false);
+        this.notify.error('No se pudo guardar la vacuna', toApiMessage(err));
+      },
+    });
+  }
+
+  openNewBatch(): void {
+    this.editingBatch.set(null);
+    this.batchForm = this.emptyBatch();
+    this.batchDialog.set(true);
+  }
+
+  editBatch(item: VaccineBatch): void {
+    this.editingBatch.set(item);
+    this.batchForm = {
+      vaccine: item.vaccine,
+      name: item.name,
+      batch_number: item.batch_number,
+      description: item.description,
+      expiration_date: item.expiration_date,
+      stock_quantity: item.stock_quantity,
+      is_active: item.is_active,
+    };
+    this.batchDialog.set(true);
+  }
+
+  saveBatch(): void {
+    const form = this.batchForm;
+    if (!form.vaccine || !form.name.trim() || !form.batch_number.trim() || !form.expiration_date) return;
+    const current = this.editingBatch();
+    const payload = {
+      ...form,
+      name: form.name.trim(),
+      batch_number: form.batch_number.trim(),
+    };
+    this.saving.set(true);
+    const request = current
+      ? this.api.updateVaccineBatch(current.id, payload)
+      : this.api.createVaccineBatch(payload);
+    request.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.batchDialog.set(false);
+        this.notify.success(current ? 'Lote actualizado' : 'Lote registrado');
+        this.load();
+      },
+      error: (err: unknown) => {
+        this.saving.set(false);
+        this.notify.error('No se pudo guardar el lote', toApiMessage(err));
       },
     });
   }
@@ -222,6 +329,22 @@ export class ClinicalTreatments {
       description: '',
       dosage_ml: 1,
       notes: '',
+      is_active: true,
+    };
+  }
+
+  private emptyVaccine(): VaccinePayload {
+    return { name: '', description: '', is_active: true };
+  }
+
+  private emptyBatch(): VaccineBatchPayload {
+    return {
+      vaccine: 0,
+      name: '',
+      batch_number: '',
+      description: '',
+      expiration_date: '',
+      stock_quantity: 0,
       is_active: true,
     };
   }

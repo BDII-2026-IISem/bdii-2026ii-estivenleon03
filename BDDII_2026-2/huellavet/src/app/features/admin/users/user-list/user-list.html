@@ -1,5 +1,5 @@
 <app-page-header title="Gestión de Usuarios" subtitle="Administración de cuentas del sistema.">
-  <button *appHasPermission="'POST /api/users'" pButton type="button" severity="success" (click)="openCreate()">
+  <button *appHasPermission="'POST /api/v1/users'" pButton type="button" severity="success" (click)="openCreate()">
     <i pButtonIcon class="pi pi-user-plus"></i>
     <span pButtonLabel>Nuevo Usuario</span>
   </button>
@@ -41,8 +41,8 @@
       </td>
       <td class="text-right">
         <button pButton type="button" text rounded severity="secondary" icon="pi pi-key" aria-label="Ver permisos" pTooltip="Ver permisos" (click)="openPermissions(row)"></button>
-        <button *appHasPermission="'PATCH /api/users/:id'" pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar" pTooltip="Editar" (click)="openEdit(row)"></button>
-        <button *appHasPermission="'DELETE /api/users/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Desactivar" pTooltip="Desactivar" (click)="remove(row)"></button>
+        <button *appHasPermission="'PATCH /api/v1/users/:id'" pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar" pTooltip="Editar" (click)="openEdit(row)"></button>
+        <button *appHasPermission="'DELETE /api/v1/users/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Desactivar" pTooltip="Desactivar" (click)="remove(row)"></button>
       </td>
     </tr>
   </ng-template>

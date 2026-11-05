@@ -52,7 +52,6 @@ export class AuthService {
       : of(null);
 
     return req$.pipe(
-      catchError(() => of(null)),
       finalize(() => this.session.clear())
     );
   }

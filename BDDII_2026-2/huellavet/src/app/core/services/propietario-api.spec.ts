@@ -29,13 +29,13 @@ describe('PropietarioApi', () => {
 
   afterEach(() => http.verify());
 
-  it('debe llamar a /api/owners/ con barra final', () => {
-    expect(environment.apiUrl.endsWith('/api')).toBe(true);
+  it('debe llamar a /api/v1/owners/ con barra final', () => {
+    expect(environment.apiUrl.endsWith('/api/v1')).toBe(true);
 
     let result: Propietario[] | undefined;
     api.list().subscribe((data) => (result = data));
 
-    const req = http.expectOne('http://localhost:8000/api/owners/');
+    const req = http.expectOne(`${environment.apiUrl}/owners/`);
     expect(req.request.method).toBe('GET');
     req.flush([MOCK_PROPIETARIO]);
 
@@ -44,7 +44,7 @@ describe('PropietarioApi', () => {
 
   it('debe enviar la baja lógica mediante DELETE respondiendo 204', () => {
     api.remove(1).subscribe();
-    const req = http.expectOne('http://localhost:8000/api/owners/1/');
+    const req = http.expectOne(`${environment.apiUrl}/owners/1/`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
