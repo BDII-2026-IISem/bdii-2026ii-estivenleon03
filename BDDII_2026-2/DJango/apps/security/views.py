@@ -4,6 +4,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
 from apps.common.status import RecordStatus
 from apps.security.models import Permission, Role, RolePermission, UserRole
@@ -12,6 +13,7 @@ from apps.security.serializers import (
     ProfileSerializer,
     RolePermissionSerializer,
     RoleSerializer,
+    EffectivePermissionsSerializer,
     UserRoleSerializer,
     UserSerializer,
 )
@@ -48,6 +50,7 @@ class UserViewSet(SoftDeleteModelViewSet):
     serializer_class = UserSerializer
 
     @action(detail=True, methods=["get"], url_path="permissions")
+    @extend_schema(responses=EffectivePermissionsSerializer)
     def permissions(self, request, pk=None):
         user = self.get_object()
         if user.pk != request.user.pk and not request.user.is_staff:
@@ -78,6 +81,11 @@ class RolePermissionViewSet(SoftDeleteModelViewSet):
     serializer_class = RolePermissionSerializer
 
 
+RoleUserViewSet = UserRoleViewSet
+ResourceViewSet = PermissionViewSet
+ResourceRoleViewSet = RolePermissionViewSet
+
+
 def _effective_permissions(user):
     assignments = RolePermission.objects.filter(
         is_active=True,
@@ -97,6 +105,7 @@ def _effective_permissions(user):
     ]
 
 
+@extend_schema(responses=EffectivePermissionsSerializer)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def user_permissions_view(request):

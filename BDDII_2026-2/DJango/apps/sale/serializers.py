@@ -2,6 +2,8 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction
 from rest_framework import serializers
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 
 from apps.patient.models import Owner, Pet
 from apps.product.models import Product
@@ -271,9 +273,11 @@ class SaleSerializer(serializers.ModelSerializer):
             'payments',
         ]
 
+    @extend_schema_field(OpenApiTypes.STR)
     def get_status(self, sale):
         return 'active' if sale.is_active else 'inactive'
 
+    @extend_schema_field(OpenApiTypes.STR)
     def get_paidAmount(self, sale):
         if not sale.is_active:
             return '0.00'
@@ -284,6 +288,7 @@ class SaleSerializer(serializers.ModelSerializer):
         )
         return format(money(paid), '.2f')
 
+    @extend_schema_field(OpenApiTypes.STR)
     def get_balanceDue(self, sale):
         if not sale.is_active:
             return '0.00'
@@ -294,6 +299,7 @@ class SaleSerializer(serializers.ModelSerializer):
         )
         return format(money(max(sale.total - paid, Decimal('0.00'))), '.2f')
 
+    @extend_schema_field(OpenApiTypes.STR)
     def get_paymentStatus(self, sale):
         if not sale.is_active:
             return 'CANCELLED'

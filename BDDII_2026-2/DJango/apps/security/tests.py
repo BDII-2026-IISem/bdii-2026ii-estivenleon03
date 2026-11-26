@@ -1,9 +1,12 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.common.testing import PASSWORD, create_active_user, grant
-from apps.security.models import Permission, Role, RolePermission, UserRole
+from apps.security.models import Permission, RefreshToken, Role, RolePermission, UserRole
+from apps.security.tokens import create_refresh_token, hash_token
 
 User = get_user_model()
 
@@ -29,6 +32,21 @@ class AuthFlowTests(APITestCase):
             format="json",
         )
         self.assertEqual(by_email.status_code, status.HTTP_200_OK)
+
+    def test_login_persists_only_a_hash_of_the_refresh_token(self):
+        response = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+            HTTP_USER_AGENT="HuellaVet test client",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        record = RefreshToken.objects.get(user=self.user)
+        self.assertEqual(record.token_hash, hash_token(response.data["refresh"]))
+        self.assertNotEqual(record.token_hash, response.data["refresh"])
+        self.assertEqual(record.device_info, "HuellaVet test client")
+        self.assertEqual(len(record.family_id), 32)
+        self.assertEqual(response.data["tokenType"], "Bearer")
 
     def test_inactive_user_and_bad_password_are_rejected(self):
         bad_password = self.client.post(
@@ -70,6 +88,36 @@ class AuthFlowTests(APITestCase):
             format="json",
         )
         self.assertEqual(reused.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertFalse(
+            RefreshToken.objects.filter(
+                family_id=RefreshToken.objects.get(
+                    token_hash=hash_token(first),
+                ).family_id,
+                status="active",
+            ).exists()
+        )
+
+    def test_expired_refresh_is_consumed_without_revoking_its_family(self):
+        first, first_record = create_refresh_token(self.user)
+        _second, second_record = create_refresh_token(
+            self.user,
+            family_id=first_record.family_id,
+        )
+        first_record.expires_at = timezone.now() - timedelta(seconds=1)
+        first_record.save(update_fields=["expires_at"])
+
+        response = self.client.post(
+            "/api/v1/auth/refresh/",
+            {"refresh": first},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data["detail"], "Refresh token vencido.")
+        first_record.refresh_from_db()
+        second_record.refresh_from_db()
+        self.assertEqual(first_record.status, "inactive")
+        self.assertEqual(second_record.status, "active")
 
     def test_logout_blacklists_refresh_token(self):
         login = self.client.post(
@@ -149,7 +197,7 @@ class RbacApiTests(APITestCase):
 
         role_response = self.client.post(
             "/api/v1/roles/",
-            {"name": "BODEGA", "description": "Inventario", "status": "active"},
+            {"name": "VETERINARIO", "description": "Atención médica", "status": "active"},
             format="json",
         )
         self.assertEqual(role_response.status_code, status.HTTP_201_CREATED)
@@ -203,7 +251,36 @@ class RbacApiTests(APITestCase):
         effective = self.client.get("/api/v1/auth/permissions/")
         self.assertEqual(effective.status_code, status.HTTP_200_OK)
         self.assertEqual(len(effective.data["permissions"]), 1)
-        self.assertEqual(effective.data["permissions"][0]["roleName"], "BODEGA")
+        self.assertEqual(effective.data["permissions"][0]["roleName"], "VETERINARIO")
+
+    def test_assignment_accepts_only_defined_roles_and_one_active_role_per_user(self):
+        auth_user = create_active_user(
+            username="role-target",
+            email="role-target@storelab.test",
+        )
+        unsupported_role = Role.objects.create(name="BODEGA")
+        rejected = self.client.post(
+            "/api/v1/user-roles/",
+            {"userId": auth_user.pk, "roleId": unsupported_role.pk, "status": "active"},
+            format="json",
+        )
+        self.assertEqual(rejected.status_code, status.HTTP_400_BAD_REQUEST)
+
+        admin_role = Role.objects.create(name="ADMIN")
+        assigned = self.client.post(
+            "/api/v1/user-roles/",
+            {"userId": auth_user.pk, "roleId": admin_role.pk, "status": "active"},
+            format="json",
+        )
+        self.assertEqual(assigned.status_code, status.HTTP_201_CREATED)
+
+        veterinarian_role = Role.objects.create(name="VETERINARIO")
+        duplicate = self.client.post(
+            "/api/v1/user-roles/",
+            {"userId": auth_user.pk, "roleId": veterinarian_role.pk, "status": "active"},
+            format="json",
+        )
+        self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_missing_grant_denies_authenticated_user(self):
         user = create_active_user(

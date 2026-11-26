@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from apps.patient.models import Owner, Pet
+from apps.security.models import Permission, Role, RolePermission, UserRole
 from apps.sale.models import Sale
 
 
@@ -238,3 +239,73 @@ class OwnerApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn('detail', response.data)
         self.assertTrue(Owner.objects.filter(pk=owner.pk).exists())
+
+
+class OwnerPortalScopeTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='portal-owner',
+            email='portal-owner@example.com',
+            password='test-password',
+        )
+        self.role = Role.objects.create(name='PROPIETARIO')
+        UserRole.objects.create(auth_user=self.user, role=self.role)
+        for method, resource in (
+            ('GET', '/api/v1/owners'),
+            ('GET', '/api/v1/owners/:id'),
+            ('PATCH', '/api/v1/owners/:id'),
+            ('GET', '/api/v1/pets'),
+            ('GET', '/api/v1/pets/:id'),
+        ):
+            permission = Permission.objects.create(
+                http_method=method,
+                resource=resource,
+            )
+            RolePermission.objects.create(role=self.role, permission=permission)
+
+        self.owner = Owner.objects.create(
+            name='Dueño autenticado',
+            doc_type='CC',
+            doc_number='portal-owner-1',
+            email=self.user.email,
+        )
+        self.pet = Pet.objects.create(owner=self.owner, name='Luna')
+        self.other_owner = Owner.objects.create(
+            name='Otro dueño',
+            doc_type='CC',
+            doc_number='portal-owner-2',
+            email='other-owner@example.com',
+        )
+        self.other_pet = Pet.objects.create(owner=self.other_owner, name='Milo')
+        self.client.force_authenticate(user=self.user)
+
+    def test_owner_portal_reads_only_its_profile_and_pets(self):
+        owner_response = self.client.get(f'/api/v1/owners/{self.owner.pk}/')
+        other_owner_response = self.client.get(
+            f'/api/v1/owners/{self.other_owner.pk}/'
+        )
+        pet_response = self.client.get(f'/api/v1/pets/{self.pet.pk}/')
+        other_pet_response = self.client.get(f'/api/v1/pets/{self.other_pet.pk}/')
+
+        self.assertEqual(owner_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(other_owner_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(pet_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(other_pet_response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_owner_portal_updates_only_phone_and_address(self):
+        allowed = self.client.patch(
+            f'/api/v1/owners/{self.owner.pk}/',
+            {'telefono': '3001234567', 'direccion': 'Calle 10'},
+            format='json',
+        )
+        forbidden = self.client.patch(
+            f'/api/v1/owners/{self.owner.pk}/',
+            {'nombre': 'Cambio no autorizado'},
+            format='json',
+        )
+
+        self.assertEqual(allowed.status_code, status.HTTP_200_OK)
+        self.assertEqual(forbidden.status_code, status.HTTP_403_FORBIDDEN)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.phone, '3001234567')
+        self.assertEqual(self.owner.address, 'Calle 10')

@@ -1,8 +1,11 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 from .models import Owner, Pet
 
 
+@extend_schema_field(OpenApiTypes.STR)
 class OwnerStatusField(serializers.Field):
     def to_representation(self, value):
         return 'active' if value else 'inactive'
@@ -14,7 +17,7 @@ class OwnerStatusField(serializers.Field):
 
 
 class OwnerSerializer(serializers.ModelSerializer):
-    nombre = serializers.CharField(source='name', max_length=120)
+    nombre = serializers.CharField(source='name', min_length=2, max_length=120)
     documento = serializers.CharField(
         source='doc_number',
         max_length=30,
@@ -33,6 +36,9 @@ class OwnerSerializer(serializers.ModelSerializer):
         required=False,
         allow_blank=True,
         allow_null=True,
+        validators=[
+            UniqueValidator(queryset=Owner.objects.all(), lookup="iexact"),
+        ],
     )
     direccion = serializers.CharField(source='address', required=False, allow_blank=True, allow_null=True)
     status = OwnerStatusField(source='is_active', required=False)

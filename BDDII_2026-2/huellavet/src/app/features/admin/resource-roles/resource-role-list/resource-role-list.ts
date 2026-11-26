@@ -26,6 +26,8 @@ import { ResourceApi } from '../../resources/resource-api';
 import { RoleApi } from '../../roles/role-api';
 import { ResourceRoleApi } from '../resource-role-api';
 
+const ASSIGNABLE_ROLE_NAMES = ['ADMIN', 'VETERINARIO', 'RECEPCIONISTA', 'PROPIETARIO'];
+
 interface ResourceOption {
   id: number;
   path: string;
@@ -89,6 +91,20 @@ export class ResourceRoleList {
     roleId: [null as number | null, [Validators.required]],
   });
 
+  readonly assignableRoles = computed(() =>
+    this.roles()
+      .filter(
+        (role) =>
+          role.status === 'active' &&
+          ASSIGNABLE_ROLE_NAMES.includes(role.name.trim().toUpperCase())
+      )
+      .sort(
+        (a, b) =>
+          ASSIGNABLE_ROLE_NAMES.indexOf(a.name.trim().toUpperCase()) -
+          ASSIGNABLE_ROLE_NAMES.indexOf(b.name.trim().toUpperCase())
+      )
+  );
+
   readonly resourceOptions = computed<ResourceOption[]>(() =>
     this.resources()
       .filter((resource) => resource.status === 'active')
@@ -112,22 +128,57 @@ export class ResourceRoleList {
   );
 
   readonly selectableResources = computed(() => {
-    const roleId = this.selectedRoleId();
-    if (roleId === null) return [];
     const query = this.permissionFilter().trim().toLowerCase();
     return this.resourceOptions().filter((option) => {
-      const alreadyGranted = this.existingGrant(roleId, option.id)?.status === 'active';
       const matchesQuery =
         !query ||
         `${option.actionLabel} ${option.resourceName} ${option.path} ${option.method}`
           .toLowerCase()
           .includes(query);
-      return !alreadyGranted && matchesQuery;
+      return matchesQuery;
     });
+  });
+
+  readonly permissionMatrixRows = computed(() => {
+    const matrix = new Map<string, { label: string; methods: Record<'C' | 'R' | 'U' | 'D', ResourceOption | undefined> }>();
+
+    for (const option of this.selectableResources()) {
+      const key = this.entityKey(option.path);
+      const current = matrix.get(key) ?? {
+        label: option.resourceName,
+        methods: { C: undefined, R: undefined, U: undefined, D: undefined },
+      };
+
+      switch (option.method) {
+        case 'POST':
+          current.methods.C = option;
+          break;
+        case 'GET':
+          current.methods.R = option;
+          break;
+        case 'PATCH':
+        case 'PUT':
+          current.methods.U = option;
+          break;
+        case 'DELETE':
+          current.methods.D = option;
+          break;
+      }
+
+      matrix.set(key, current);
+    }
+
+    return Array.from(matrix.values()).sort((a, b) => a.label.localeCompare(b.label));
   });
 
   constructor() {
     this.load();
+    this.loadOptions();
+  }
+
+  private loadOptions(): void {
+    this.optionsLoading.set(true);
+    this.optionsError.set(null);
     forkJoin({
       roles: this.rolesApi.list(),
       resources: this.resourcesApi.list(),
@@ -251,6 +302,15 @@ export class ResourceRoleList {
     return `/${path}`.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
   }
 
+  private entityKey(path: string): string {
+    const segments = this.normalizePath(path)
+      .replace(/^\/api\/v1\/?/, '')
+      .split('/')
+      .filter(Boolean);
+    const entity = segments[0] ?? 'general';
+    return entity.replace(/[:/]/g, '').toLowerCase();
+  }
+
   openCreate(): void {
     this.form.reset({ roleId: null });
     this.selectedRoleId.set(null);
@@ -258,6 +318,7 @@ export class ResourceRoleList {
     this.selectedResourceIds.set([]);
     this.selectionTouched.set(false);
     this.dialogVisible.set(true);
+    this.loadOptions();
   }
 
   onRoleChange(): void {
@@ -269,47 +330,72 @@ export class ResourceRoleList {
   submit(): void {
     const val = this.form.getRawValue();
     const selectedIds = this.selectedResourceIds();
-    if (!val.roleId || selectedIds.length === 0) {
+    if (!val.roleId) {
       this.form.markAllAsTouched();
       this.selectionTouched.set(true);
       return;
     }
 
+    const currentActiveGrantIds = this.rows()
+      .filter((row) => (row.roleId ?? row.role_id) === val.roleId && row.status === 'active')
+      .map((row) => row.resourceId ?? row.permission_id)
+      .filter((resourceId): resourceId is number => typeof resourceId === 'number');
+
+    const toRemove = currentActiveGrantIds.filter((resourceId) => !selectedIds.includes(resourceId));
+    const toSave = selectedIds.filter((resourceId) => !currentActiveGrantIds.includes(resourceId));
+
     this.saving.set(true);
-    of(...selectedIds)
-      .pipe(
-        concatMap((resourceId) => {
-          const payload: ResourceRolePayload = {
-            roleId: val.roleId!,
-            resourceId,
-            status: 'active',
-          };
-          const existing = this.existingGrant(val.roleId, resourceId);
-          const request = existing
-            ? this.api.update(existing.id, payload)
-            : this.api.create(payload);
-          return request.pipe(
-            map((): GrantResult => ({ resourceId, success: true })),
-            catchError((error: unknown) => of({ resourceId, success: false, error }))
-          );
-        }),
-        toArray(),
-        finalize(() => this.saving.set(false))
-      )
-      .subscribe((results) => {
+
+    const saveRequests = of(...toSave).pipe(
+      concatMap((resourceId) => {
+        const payload: ResourceRolePayload = {
+          roleId: val.roleId!,
+          resourceId,
+          status: 'active',
+        };
+        const existing = this.existingGrant(val.roleId, resourceId);
+        const request = existing
+          ? this.api.update(existing.id, payload)
+          : this.api.create(payload);
+        return request.pipe(
+          map((): GrantResult => ({ resourceId, success: true })),
+          catchError((error: unknown) => of({ resourceId, success: false, error }))
+        );
+      }),
+      toArray()
+    );
+
+    const removeRequests = of(...toRemove).pipe(
+      concatMap((resourceId) => {
+        const existing = this.existingGrant(val.roleId, resourceId);
+        if (!existing) {
+          return of({ resourceId, success: true } satisfies GrantResult);
+        }
+        return this.api.remove(existing.id).pipe(
+          map((): GrantResult => ({ resourceId, success: true })),
+          catchError((error: unknown) => of({ resourceId, success: false, error }))
+        );
+      }),
+      toArray()
+    );
+
+    forkJoin({ save: saveRequests, remove: removeRequests })
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe(({ save, remove }) => {
+        const results = [...save, ...remove];
         const failures = results.filter(
           (result): result is Extract<GrantResult, { success: false }> => !result.success
         );
-        const granted = results.length - failures.length;
+        const successCount = results.length - failures.length;
         const failedIds = failures.map((result) => result.resourceId);
 
-        if (granted > 0) {
+        if (successCount > 0) {
           this.load();
         }
 
         if (failures.length === 0) {
           this.notify.success(
-            granted === 1 ? 'Se concedió 1 permiso' : `Se concedieron ${granted} permisos`
+            successCount === 1 ? 'Se guardó 1 permiso' : `Se guardaron ${successCount} permisos`
           );
           this.dialogVisible.set(false);
           this.selectedResourceIds.set([]);
@@ -322,11 +408,11 @@ export class ResourceRoleList {
             `${this.resourceLabel(resourceId)}: ${toApiMessage(error)}`
           )
           .join(', ');
-        const detail = `${granted} concedido(s), ${failures.length} fallido(s). ${failedNames}`;
-        if (granted > 0) {
+        const detail = `${successCount} guardado(s), ${failures.length} fallido(s). ${failedNames}`;
+        if (successCount > 0) {
           this.notify.warn('Asignación parcial', detail);
         } else {
-          this.notify.error('No se pudieron conceder los permisos', detail);
+          this.notify.error('No se pudieron guardar los permisos', detail);
         }
       });
   }

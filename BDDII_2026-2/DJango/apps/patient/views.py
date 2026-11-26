@@ -1,14 +1,41 @@
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError, RestrictedError
+from rest_framework.exceptions import PermissionDenied
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from apps.security.ownership import (
+    has_active_role,
+    is_owner_portal_user,
+    scope_to_authenticated_owner,
+)
 from .models import Owner, Pet
 from .serializers import OwnerSerializer, PetSerializer
 
 class OwnerViewSet(viewsets.ModelViewSet):
     queryset = Owner.objects.all()
     serializer_class = OwnerSerializer
+
+    def get_queryset(self):
+        return scope_to_authenticated_owner(
+            super().get_queryset(),
+            self.request.user,
+            "email",
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        is_veterinarian = (
+            has_active_role(request.user, "VETERINARIO")
+            and not has_active_role(request.user, "ADMIN")
+            and not request.user.is_staff
+            and not request.user.is_superuser
+        )
+        if is_owner_portal_user(request.user) or is_veterinarian:
+            if not set(request.data).issubset({"telefono", "direccion"}):
+                raise PermissionDenied(
+                    "Solo puede actualizar el teléfono y la dirección."
+                )
+        return super().partial_update(request, *args, **kwargs)
 
     @action(detail=True, methods=['delete'], url_path='permanent-delete')
     @transaction.atomic
@@ -54,6 +81,13 @@ class OwnerViewSet(viewsets.ModelViewSet):
 class PetViewSet(viewsets.ModelViewSet):
     queryset = Pet.objects.all()
     serializer_class = PetSerializer
+
+    def get_queryset(self):
+        return scope_to_authenticated_owner(
+            super().get_queryset(),
+            self.request.user,
+            "owner__email",
+        )
 
     def perform_destroy(self, instance):
         instance.is_active = False

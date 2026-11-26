@@ -19,7 +19,7 @@
       <th>Usuario</th>
       <th>Rol Asignado</th>
       <th>Estado</th>
-      <th class="w-28 text-right">Acciones</th>
+      <th class="w-36 text-right">Acciones</th>
     </tr>
   </ng-template>
 
@@ -29,6 +29,7 @@
       <td class="text-indigo-400 font-semibold">{{ roleLabel(row.roleId) }}</td>
       <td><app-status-tag [status]="row.status" /></td>
       <td class="text-right">
+        <button *appHasPermission="'PATCH /api/v1/user-roles/:id'" pButton type="button" text rounded severity="info" icon="pi pi-pencil" aria-label="Editar asignación" pTooltip="Editar asignación" (click)="openEdit(row)"></button>
         <button *appHasPermission="'DELETE /api/v1/user-roles/:id'" pButton type="button" text rounded severity="danger" icon="pi pi-trash" aria-label="Retirar" pTooltip="Retirar" (click)="remove(row)"></button>
       </td>
     </tr>
@@ -43,19 +44,29 @@
   </ng-template>
 </p-table>
 
-<p-dialog [visible]="dialogVisible()" (visibleChange)="dialogVisible.set($event)" header="Nueva Asignación" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-lg mx-4">
+<p-dialog [visible]="dialogVisible()" (visibleChange)="dialogVisible.set($event)" [header]="editing() ? 'Editar Asignación' : 'Nueva Asignación'" [modal]="true" [draggable]="false" [resizable]="false" styleClass="w-full max-w-lg mx-4">
   <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 text-slate-100">
     <div class="flex flex-col gap-2">
       <label for="ru-user" class="text-sm font-semibold">Usuario</label>
-      <p-select inputId="ru-user" formControlName="userId" [options]="users()" optionLabel="username" optionValue="id" [filter]="true" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
+      @if (editing()) {
+        <input id="ru-user" pInputText [value]="userLabel(editing()?.userId)" readonly class="w-full bg-slate-800 text-white border-slate-600" />
+      } @else {
+        <p-select inputId="ru-user" formControlName="userId" [options]="userOptions()" optionLabel="username" optionValue="id" [filter]="true" placeholder="Selecciona un usuario" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
+      }
     </div>
     <div class="flex flex-col gap-2">
       <label for="ru-role" class="text-sm font-semibold">Rol</label>
-      <p-select inputId="ru-role" formControlName="roleId" [options]="roles()" optionLabel="name" optionValue="id" [filter]="true" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
+      <p-select inputId="ru-role" formControlName="roleId" [options]="roleOptions()" optionLabel="name" optionValue="id" [filter]="true" placeholder="Selecciona un rol" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
     </div>
+    @if (editing()) {
+      <div class="flex flex-col gap-2">
+        <label for="ru-status" class="text-sm font-semibold">Estado</label>
+        <p-select inputId="ru-status" formControlName="status" [options]="statusOptions" optionLabel="label" optionValue="value" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" />
+      </div>
+    }
     <div class="flex items-end justify-end gap-2 pt-4 border-t border-slate-700">
       <button pButton type="button" severity="secondary" outlined (click)="dialogVisible.set(false)"><span pButtonLabel>Cancelar</span></button>
-      <button pButton type="submit" severity="success" [loading]="saving()"><span pButtonLabel>Asignar</span></button>
+      <button pButton type="submit" severity="success" [loading]="saving()"><span pButtonLabel>{{ editing() ? 'Guardar cambios' : 'Asignar' }}</span></button>
     </div>
   </form>
 </p-dialog>

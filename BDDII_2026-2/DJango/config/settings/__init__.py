@@ -1,21 +1,28 @@
 import os
 from datetime import timedelta
 from pathlib import Path
-from dotenv import load_dotenv
+
 from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from config.database import database_from_environ
 
+BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", os.getenv("SECRET_KEY", "")).strip()
 if not SECRET_KEY:
-    raise ImproperlyConfigured("Define SECRET_KEY en el archivo .env.")
+    raise ImproperlyConfigured("Defina DJANGO_SECRET_KEY en el archivo .env.")
 
-DEBUG = os.getenv("DEBUG", "False").strip().lower() in {"1", "true", "yes", "on"}
+DEBUG = os.getenv("DJANGO_DEBUG", os.getenv("DEBUG", "False")).strip().lower() in {
+    "1", "true", "yes", "on"
+}
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.getenv(
+        "DJANGO_ALLOWED_HOSTS",
+        os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1"),
+    ).split(",")
     if host.strip()
 ]
 
@@ -33,8 +40,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     # Módulos de HuellaVet
-    'apps.common',
     'apps.security',
+    'apps.client',
     'apps.patient',
     'apps.staff',
     'apps.appointment',
@@ -75,30 +82,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-database_engine = os.getenv("DB_ENGINE", "django.db.backends.mysql").strip()
-database_engine = {
-    "mysql": "django.db.backends.mysql",
-    "sqlite": "django.db.backends.sqlite3",
-    "sqlite3": "django.db.backends.sqlite3",
-}.get(database_engine.lower(), database_engine)
-database_name = os.getenv("DB_NAME")
-if not database_name and database_engine == "django.db.backends.sqlite3":
-    database_name = str(BASE_DIR / "db.sqlite3")
-if not database_name:
-    raise ImproperlyConfigured("Define DB_NAME en el archivo .env.")
-
-DATABASES = {
-    "default": {
-        "ENGINE": database_engine,
-        "NAME": database_name,
-        "USER": os.getenv("DB_USER", ""),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", ""),
-    }
-}
-if database_engine == "django.db.backends.mysql":
-    DATABASES["default"]["OPTIONS"] = {"charset": "utf8mb4"}
+DATABASES = database_from_environ(os.environ)
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -132,11 +116,20 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
+API_ACCESS = os.getenv("API_ACCESS", "rbac").strip().lower()
+if API_ACCESS not in {"open", "rbac"}:
+    raise ImproperlyConfigured(
+        "API_ACCESS debe ser 'open' o 'rbac'."
+    )
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'HuellaVet API',
     'DESCRIPTION': 'API REST para gestión clínica veterinaria, historias clínicas, citas y pagos.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'ENUM_NAME_OVERRIDES': {
+        'PaymentMethodEnum': 'apps.sale.models.SalePayment.MethodChoices',
+    },
 }
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv(

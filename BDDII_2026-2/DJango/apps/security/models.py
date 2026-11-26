@@ -1,9 +1,37 @@
+import uuid
+
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+
 from apps.common.models import BaseModel
+from apps.common.status import RecordStatus
+
+
+def default_expiry():
+    return timezone.now() + settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]
+
+
+def default_refresh_family_id():
+    return uuid.uuid4().hex
+
+
+def normalize_resource_path(path):
+    segments = [segment.strip() for segment in str(path).split("/") if segment.strip()]
+    normalized = []
+    for segment in segments:
+        if segment in {"1", ":id", "{id}", "<int:id>", "<int:pk>"}:
+            normalized.append("<int:pk>")
+        elif segment.startswith(":") or (
+            segment.startswith("{") and segment.endswith("}")
+        ):
+            normalized.append("<int:pk>")
+        else:
+            normalized.append(segment)
+    return "/".join(normalized) + "/"
 
 class User(BaseModel):
-    id = models.AutoField(primary_key=True, verbose_name='ID')
+    id = models.BigAutoField(primary_key=True, verbose_name='ID')
     name = models.CharField(max_length=120)
     email = models.EmailField(max_length=120, unique=True)
     password_hash = models.CharField(max_length=255)
@@ -43,7 +71,7 @@ class UserProfile(models.Model):
 
 
 class Role(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50)
     description = models.CharField(max_length=255, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
@@ -53,32 +81,64 @@ class Role(models.Model):
         verbose_name = 'Rol'
         verbose_name_plural = 'Roles'
         app_label = 'security'
+        constraints = [
+            models.UniqueConstraint(fields=("name",), name="uq_roles_name"),
+        ]
+        indexes = [
+            models.Index(fields=("is_active",), name="ix_roles_status"),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.name = self.name.strip().upper()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
 
 
 class Permission(models.Model):
-    resource = models.CharField(max_length=100)
-    http_method = models.CharField(max_length=10)
+    resource = models.CharField(max_length=100, db_column="path")
+    http_method = models.CharField(max_length=10, db_column="method")
     description = models.CharField(max_length=255, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        db_table = 'permissions'
+        db_table = 'resources'
         verbose_name = 'Permiso'
         verbose_name_plural = 'Permisos'
         app_label = 'security'
+        constraints = [
+            models.UniqueConstraint(
+                fields=("http_method", "resource"),
+                name="uq_resources_method_path",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=("is_active",), name="ix_resources_status"),
+        ]
 
     def __str__(self):
         return f"{self.http_method} - {self.resource}"
+
+    @property
+    def method(self):
+        return self.http_method
+
+    @property
+    def path(self):
+        return self.resource
+
+    def save(self, *args, **kwargs):
+        self.http_method = self.http_method.strip().upper()
+        self.resource = normalize_resource_path(self.resource)
+        super().save(*args, **kwargs)
 
 
 class UserRole(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
-        db_column='user_id',
+        db_column='legacy_user_id',
         null=True,
         blank=True,
         related_name='legacy_role_assignments',
@@ -86,7 +146,7 @@ class UserRole(models.Model):
     auth_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        db_column='auth_user_id',
+        db_column='user_id',
         null=True,
         blank=True,
         related_name='huellavet_role_assignments',
@@ -100,8 +160,21 @@ class UserRole(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        db_table = 'user_roles'
-        unique_together = (('user', 'role'), ('auth_user', 'role'))
+        db_table = 'role_users'
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "role"),
+                name="uq_role_users_legacy_role",
+            ),
+            models.UniqueConstraint(
+                fields=("auth_user", "role"),
+                name="uq_role_users_user_role",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=("auth_user",), name="ix_role_users_user_id"),
+            models.Index(fields=("role",), name="ix_role_users_role_id"),
+        ]
         app_label = 'security'
 
 
@@ -115,15 +188,70 @@ class RolePermission(models.Model):
     permission = models.ForeignKey(
         Permission,
         on_delete=models.CASCADE,
-        db_column='permission_id',
+        db_column='resource_id',
         related_name='role_assignments',
     )
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        db_table = 'role_permissions'
-        unique_together = (('role', 'permission'),)
+        db_table = 'resource_roles'
+        constraints = [
+            models.UniqueConstraint(
+                fields=("role", "permission"),
+                name="uq_res_roles_role_res",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=("role",), name="ix_resource_roles_role_id"),
+            models.Index(fields=("permission",), name="ix_resource_roles_resource_id"),
+        ]
         app_label = 'security'
+
+
+class RefreshToken(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='refresh_token_records',
+    )
+    token_hash = models.CharField(max_length=64)
+    family_id = models.CharField(max_length=32, default=default_refresh_family_id)
+    device_info = models.CharField(max_length=255, blank=True, default="")
+    expires_at = models.DateTimeField(default=default_expiry)
+    status = models.CharField(
+        max_length=10,
+        choices=RecordStatus.choices,
+        default=RecordStatus.ACTIVE,
+    )
+
+    class Meta:
+        db_table = "refresh_tokens"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("token_hash",),
+                name="uq_refresh_tokens_token_hash",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(status__in=RecordStatus.values),
+                name="refresh_tokens_status_valid",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=("family_id",), name="ix_refresh_tokens_family_id"),
+            models.Index(fields=("user",), name="ix_refresh_tokens_user_id"),
+        ]
+
+    @property
+    def is_usable(self):
+        return (
+            self.status == RecordStatus.ACTIVE
+            and self.expires_at > timezone.now()
+        )
+
+
+Resource = Permission
+RoleUser = UserRole
+ResourceRole = RolePermission
 
 
 class Appointments(models.Model):

@@ -1,21 +1,42 @@
+from django.contrib.auth.hashers import check_password, make_password
+from django.core.validators import MinLengthValidator
 from django.db import models
 from apps.common.models import BaseModel
+
 
 class Owner(BaseModel):
     doc_type = models.CharField(max_length=20)
     doc_number = models.CharField(max_length=30, unique=True)
-    name = models.CharField(max_length=120)
+    name = models.CharField(max_length=120, validators=[MinLengthValidator(2)])
     phone = models.CharField(max_length=20, null=True, blank=True)
     email = models.CharField(max_length=120, null=True, blank=True)
     address = models.CharField(max_length=255, null=True, blank=True)
+    password = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
         db_table = 'owners'
         verbose_name = 'Propietario'
         verbose_name_plural = 'Propietarios'
+        constraints = [
+            models.UniqueConstraint(fields=("email",), name="uq_owners_email"),
+        ]
+        indexes = [
+            models.Index(fields=("is_active",), name="ix_owners_status"),
+        ]
 
     def __str__(self):
         return f"{self.name} - {self.doc_number}"
+
+    def save(self, *args, **kwargs):
+        if self.email is not None:
+            self.email = self.email.strip().lower() or None
+        super().save(*args, **kwargs)
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        return bool(self.password) and check_password(raw_password, self.password)
 
 
 class Pet(BaseModel):

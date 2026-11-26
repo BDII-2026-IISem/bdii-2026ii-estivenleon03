@@ -1,9 +1,12 @@
 from rest_framework import serializers
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 from rest_framework.validators import UniqueValidator
 
 from .models import Product, ProductType
 
 
+@extend_schema_field(OpenApiTypes.STR)
 class StatusField(serializers.Field):
     def to_representation(self, value):
         return 'active' if value else 'inactive'

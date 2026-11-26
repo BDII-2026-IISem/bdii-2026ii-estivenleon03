@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -21,6 +22,8 @@ import { HasPermission } from '../../../../shared/directives/has-permission';
 import { UserApi } from '../../users/user-api';
 import { RoleApi } from '../../roles/role-api';
 import { RoleUserApi } from '../role-user-api';
+
+const ASSIGNABLE_ROLE_NAMES = ['ADMIN', 'VETERINARIO', 'RECEPCIONISTA', 'PROPIETARIO'];
 
 @Component({
   selector: 'app-role-user-list',
@@ -59,10 +62,26 @@ export class RoleUserList {
   readonly error = signal<string | null>(null);
   readonly filter = signal('');
   readonly dialogVisible = signal(false);
+  readonly editing = signal<RoleUser | null>(null);
+  readonly roleOptions = computed(() =>
+    this.roles().filter((role) => role.status === 'active' && ASSIGNABLE_ROLE_NAMES.includes(role.name))
+  );
+  readonly userOptions = computed(() =>
+    this.users().filter(
+      (user) =>
+        user.status === 'active' &&
+        !this.rows().some((row) => row.userId === user.id && row.id !== this.editing()?.id)
+    )
+  );
+  readonly statusOptions = [
+    { label: 'Activo', value: 'active' as const },
+    { label: 'Inactivo', value: 'inactive' as const },
+  ];
 
   readonly form = this.fb.group({
     userId: [null as number | null, [Validators.required]],
     roleId: [null as number | null, [Validators.required]],
+    status: ['active' as 'active' | 'inactive', [Validators.required]],
   });
 
   readonly visibleRows = computed(() =>
@@ -74,20 +93,26 @@ export class RoleUserList {
 
   constructor() {
     this.load();
-    this.usersApi.list().subscribe({ next: (res) => this.users.set(res) });
-    this.rolesApi.list().subscribe({ next: (res) => this.roles.set(res) });
   }
 
   load(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.api.list().subscribe({
-      next: (data) => {
-        this.rows.set(data);
+    forkJoin({
+      assignments: this.api.list(),
+      users: this.usersApi.list(),
+      roles: this.rolesApi.list(),
+    }).subscribe({
+      next: ({ assignments, users, roles }) => {
+        this.rows.set(assignments);
+        this.users.set(users);
+        this.roles.set(roles);
         this.loading.set(false);
       },
       error: (err: unknown) => {
         this.rows.set([]);
+        this.users.set([]);
+        this.roles.set([]);
         this.error.set(toApiMessage(err));
         this.loading.set(false);
       },
@@ -103,7 +128,20 @@ export class RoleUserList {
   }
 
   openCreate(): void {
-    this.form.reset({ userId: null, roleId: null });
+    this.editing.set(null);
+    this.form.controls.userId.enable();
+    this.form.reset({ userId: null, roleId: null, status: 'active' });
+    this.dialogVisible.set(true);
+  }
+
+  openEdit(row: RoleUser): void {
+    this.editing.set(row);
+    this.form.reset({
+      userId: row.userId ?? null,
+      roleId: row.roleId ?? null,
+      status: row.status,
+    });
+    this.form.controls.userId.disable();
     this.dialogVisible.set(true);
   }
 
@@ -116,19 +154,26 @@ export class RoleUserList {
     const payload: RoleUserPayload = {
       userId: val.userId,
       roleId: val.roleId,
-      status: 'active',
+      status: val.status,
     };
     this.saving.set(true);
-    this.api.create(payload).subscribe({
+    const current = this.editing();
+    const request = current
+      ? this.api.update(current.id, payload)
+      : this.api.create(payload);
+    request.subscribe({
       next: () => {
         this.saving.set(false);
         this.dialogVisible.set(false);
-        this.notify.success('Asignación vinculada');
+        this.notify.success(current ? 'Asignación actualizada' : 'Asignación vinculada');
         this.load();
       },
       error: (err: unknown) => {
         this.saving.set(false);
-        this.notify.error('No se pudo vincular', toApiMessage(err));
+        this.notify.error(
+          current ? 'No se pudo actualizar' : 'No se pudo vincular',
+          toApiMessage(err)
+        );
       },
     });
   }

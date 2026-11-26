@@ -19,6 +19,7 @@ from apps.security.views import (
 )
 from apps.security.views import user_permissions_view
 from apps.patient.views import OwnerViewSet, PetViewSet
+from apps.client.views import ClientViewSet
 from apps.staff.views import VeterinarianViewSet
 from apps.appointment.views import AppointmentViewSet
 from apps.clinical.views import ConsultationViewSet, PrescriptionViewSet, VaccineViewSet, VaccineBatchViewSet, VaccineApplicationViewSet
@@ -26,13 +27,17 @@ from apps.billing.views import PaymentViewSet, PaymentAuditViewSet
 from apps.product.views import ProductTypeViewSet, ProductViewSet
 from apps.sale.views import SaleViewSet
 
-router = DefaultRouter()
+router = DefaultRouter(use_regex_path=False)
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'roles', RoleViewSet, basename='role')
 router.register(r'permissions', PermissionViewSet, basename='permission')
 router.register(r'user-roles', UserRoleViewSet, basename='userrole')
+router.register(r'role-users', UserRoleViewSet, basename='role-user')
 router.register(r'role-permissions', RolePermissionViewSet, basename='rolepermission')
+router.register(r'resources', PermissionViewSet, basename='resource')
+router.register(r'resource-roles', RolePermissionViewSet, basename='resource-role')
 router.register(r'owners', OwnerViewSet, basename='owner')
+router.register(r'clients', ClientViewSet, basename='client')
 router.register(r'pets', PetViewSet, basename='pet')
 router.register(r'veterinarians', VeterinarianViewSet, basename='veterinarian')
 router.register(r'appointments', AppointmentViewSet, basename='appointment')

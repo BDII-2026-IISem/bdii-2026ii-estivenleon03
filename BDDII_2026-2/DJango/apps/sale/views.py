@@ -9,6 +9,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.product.models import Product
+from apps.security.ownership import scope_to_authenticated_owner
 from .models import Sale, SalePayment
 from .serializers import (
     SaleCreateSerializer,
@@ -23,6 +24,13 @@ class SaleViewSet(viewsets.ModelViewSet):
         'items',
         'payments',
     )
+
+    def get_queryset(self):
+        return scope_to_authenticated_owner(
+            super().get_queryset(),
+            self.request.user,
+            'owner__email',
+        )
 
     def get_serializer_class(self):
         if self.action == 'create':

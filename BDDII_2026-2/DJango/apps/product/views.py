@@ -1,7 +1,9 @@
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from apps.security.ownership import has_active_role
 from .models import Product, ProductType
 from .serializers import ProductSerializer, ProductTypeSerializer
 
@@ -38,6 +40,27 @@ class ProductTypeViewSet(StatusFilteredViewSet):
 class ProductViewSet(StatusFilteredViewSet):
     queryset = Product.objects.select_related('product_type').all()
     serializer_class = ProductSerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        if (
+            has_active_role(request.user, 'VETERINARIO')
+            and not request.user.is_staff
+            and not request.user.is_superuser
+        ):
+            if set(request.data) != {'quantity'}:
+                raise PermissionDenied(
+                    'El veterinario solo puede actualizar el stock.'
+                )
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            if serializer.validated_data['stock'] >= instance.stock:
+                raise PermissionDenied(
+                    'El veterinario solo puede descontar unidades del stock.'
+                )
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        return super().partial_update(request, *args, **kwargs)
 
     @action(detail=False, methods=['get'])
     def available(self, request):

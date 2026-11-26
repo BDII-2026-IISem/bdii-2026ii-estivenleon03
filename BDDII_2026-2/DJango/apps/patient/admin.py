@@ -5,6 +5,7 @@ from .models import Owner, Pet
 class OwnerAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'doc_type', 'doc_number', 'phone', 'email')
     search_fields = ('name', 'doc_number')
+    exclude = ('password',)
 
 @admin.register(Pet)
 class PetAdmin(admin.ModelAdmin):

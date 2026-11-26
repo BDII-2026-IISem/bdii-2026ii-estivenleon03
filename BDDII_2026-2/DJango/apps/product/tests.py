@@ -4,6 +4,7 @@ from rest_framework.test import APITestCase
 from decimal import Decimal
 
 from apps.product.models import Product, ProductType
+from apps.security.models import Permission, Role, RolePermission, UserRole
 
 
 class ProductInventoryApiTests(APITestCase):
@@ -130,6 +131,50 @@ class ProductInventoryApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         product.refresh_from_db()
         self.assertFalse(product.is_active)
+
+    def test_veterinarian_can_only_decrease_product_quantity(self):
+        veterinarian = get_user_model().objects.create_user(
+            username='stock-veterinarian',
+            email='stock-veterinarian@example.com',
+            password='test-password',
+        )
+        role = Role.objects.create(name='VETERINARIO')
+        UserRole.objects.create(auth_user=veterinarian, role=role)
+        permission = Permission.objects.create(
+            http_method='PATCH',
+            resource='/api/v1/products/:id',
+        )
+        RolePermission.objects.create(role=role, permission=permission)
+        product = Product.objects.create(
+            product_type=self.product_type,
+            name='Insumo de consulta',
+            brand='Vet',
+            price='150.00',
+            stock=20,
+        )
+        self.client.force_authenticate(user=veterinarian)
+
+        decreased = self.client.patch(
+            f'{self.products_endpoint}{product.pk}/',
+            {'quantity': 18},
+            format='json',
+        )
+        increased = self.client.patch(
+            f'{self.products_endpoint}{product.pk}/',
+            {'quantity': 21},
+            format='json',
+        )
+        price_change = self.client.patch(
+            f'{self.products_endpoint}{product.pk}/',
+            {'price': '1.00'},
+            format='json',
+        )
+
+        self.assertEqual(decreased.status_code, status.HTTP_200_OK)
+        self.assertEqual(increased.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(price_change.status_code, status.HTTP_403_FORBIDDEN)
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 18)
 
     def test_type_cannot_be_deactivated_while_active_products_exist(self):
         Product.objects.create(

@@ -1,5 +1,6 @@
 import re
 
+from django.conf import settings
 from rest_framework.permissions import BasePermission
 
 from apps.security.models import RolePermission
@@ -35,6 +36,21 @@ class HasResourceAccess(BasePermission):
             return False
         if user.is_staff or user.is_superuser:
             return True
+
+        if settings.API_ACCESS == "open":
+            model = getattr(view, "queryset", None)
+            app_label = getattr(getattr(model, "model", None), "_meta", None)
+            if app_label and app_label.app_label in {
+                "client",
+                "patient",
+                "staff",
+                "appointment",
+                "clinical",
+                "billing",
+                "product",
+                "sale",
+            }:
+                return True
 
         match = request.resolver_match
         if match is None:

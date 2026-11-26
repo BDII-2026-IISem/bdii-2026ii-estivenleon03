@@ -9,6 +9,7 @@ from apps.appointment.models import Appointment
 from apps.appointment.serializers import AppointmentSerializer
 from apps.clinical.models import Consultation
 from apps.patient.models import Owner, Pet
+from apps.security.models import Permission, Role, RolePermission, UserRole
 from apps.staff.models import Veterinarian
 
 
@@ -305,3 +306,83 @@ class AppointmentApiTests(APITestCase):
         )
         self.assertEqual(payment.appointment_id, appointment.pk)
         self.assertEqual(consultation.appointment_id, appointment.pk)
+
+
+class OwnerAppointmentScopeTests(APITestCase):
+    endpoint = '/api/v1/appointments/'
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='appointment-owner',
+            email='appointment-owner@example.com',
+            password='test-password',
+        )
+        self.role = Role.objects.create(name='PROPIETARIO')
+        UserRole.objects.create(auth_user=self.user, role=self.role)
+        for method, resource in (
+            ('GET', '/api/v1/appointments'),
+            ('GET', '/api/v1/appointments/:id'),
+            ('POST', '/api/v1/appointments'),
+        ):
+            permission = Permission.objects.create(
+                http_method=method,
+                resource=resource,
+            )
+            RolePermission.objects.create(role=self.role, permission=permission)
+
+        self.owner = Owner.objects.create(
+            name='Dueño autenticado',
+            doc_type='CC',
+            doc_number='appointment-portal-owner-1',
+            email=self.user.email,
+        )
+        self.other_owner = Owner.objects.create(
+            name='Otro dueño',
+            doc_type='CC',
+            doc_number='appointment-portal-owner-2',
+            email='other-appointment-owner@example.com',
+        )
+        self.pet = Pet.objects.create(owner=self.owner, name='Luna')
+        self.other_pet = Pet.objects.create(owner=self.other_owner, name='Milo')
+        self.veterinarian = Veterinarian.objects.create(name='Dra. Vet')
+        self.own_appointment = Appointment.objects.create(
+            pet=self.pet,
+            veterinarian=self.veterinarian,
+            start_time=datetime.fromisoformat('2027-01-05T09:00:00-05:00'),
+            end_time=datetime.fromisoformat('2027-01-05T10:00:00-05:00'),
+            reason='Consulta propia',
+        )
+        self.other_appointment = Appointment.objects.create(
+            pet=self.other_pet,
+            veterinarian=self.veterinarian,
+            start_time=datetime.fromisoformat('2027-01-05T11:00:00-05:00'),
+            end_time=datetime.fromisoformat('2027-01-05T12:00:00-05:00'),
+            reason='Consulta ajena',
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_owner_portal_lists_and_retrieves_only_its_appointments(self):
+        response = self.client.get(self.endpoint)
+        hidden = self.client.get(f'{self.endpoint}{self.other_appointment.pk}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [row['id'] for row in response.data],
+            [self.own_appointment.pk],
+        )
+        self.assertEqual(hidden.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_owner_portal_can_request_a_visit_only_for_its_pets(self):
+        payload = {
+            'pet': self.other_pet.pk,
+            'veterinarian': self.veterinarian.pk,
+            'start_time': '2027-01-06T09:00:00-05:00',
+            'end_time': '2027-01-06T10:00:00-05:00',
+            'reason': 'Cita solicitada',
+        }
+        rejected = self.client.post(self.endpoint, payload, format='json')
+        payload['pet'] = self.pet.pk
+        accepted = self.client.post(self.endpoint, payload, format='json')
+
+        self.assertEqual(rejected.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(accepted.status_code, status.HTTP_201_CREATED)

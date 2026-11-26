@@ -1,11 +1,15 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 
 from .models import Permission, Role, RolePermission, UserProfile, UserRole
 
 User = get_user_model()
+ASSIGNABLE_ROLE_NAMES = ("ADMIN", "VETERINARIO", "RECEPCIONISTA", "PROPIETARIO")
 
 
+@extend_schema_field(OpenApiTypes.STR)
 class StatusField(serializers.Field):
     def to_representation(self, value):
         return "active" if value else "inactive"
@@ -18,6 +22,7 @@ class StatusField(serializers.Field):
         raise serializers.ValidationError("El estado debe ser active o inactive.")
 
 
+@extend_schema_field(OpenApiTypes.STR)
 class AvatarField(serializers.Field):
     def get_attribute(self, user):
         return user
@@ -57,6 +62,7 @@ class UserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "name", "isStaff", "isSuperuser")
 
+    @extend_schema_field(OpenApiTypes.STR)
     def get_name(self, user):
         return user.get_full_name() or user.username
 
@@ -139,13 +145,48 @@ class UserRoleSerializer(serializers.ModelSerializer):
         source="auth_user",
         queryset=User.objects.all(),
     )
-    roleId = serializers.PrimaryKeyRelatedField(source="role", queryset=Role.objects.all())
+    roleId = serializers.PrimaryKeyRelatedField(
+        source="role",
+        queryset=Role.objects.filter(
+            name__in=ASSIGNABLE_ROLE_NAMES,
+            is_active=True,
+        ),
+    )
     status = StatusField(source="is_active", required=False)
 
     class Meta:
         model = UserRole
         fields = ("id", "userId", "roleId", "status")
         read_only_fields = ("id",)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        auth_user = attrs.get(
+            "auth_user",
+            self.instance.auth_user if self.instance else None,
+        )
+        is_active = attrs.get(
+            "is_active",
+            self.instance.is_active if self.instance else True,
+        )
+        if auth_user:
+            is_same_user = (
+                self.instance is not None
+                and self.instance.auth_user_id == auth_user.pk
+            )
+            if not auth_user.is_active and (is_active or not is_same_user):
+                raise serializers.ValidationError({
+                    "userId": "No se puede asignar un rol a un usuario inactivo."
+                })
+        if auth_user and is_active:
+            assignments = UserRole.objects.filter(auth_user=auth_user, is_active=True)
+            if self.instance:
+                assignments = assignments.exclude(pk=self.instance.pk)
+            if assignments.exists():
+                raise serializers.ValidationError({
+                    "userId": "El usuario ya tiene una asignación activa. Edita el rol existente."
+                })
+        return attrs
 
 
 class RolePermissionSerializer(serializers.ModelSerializer):
@@ -186,3 +227,33 @@ class TokenPairSerializer(serializers.Serializer):
     refresh = serializers.CharField()
     token_type = serializers.CharField()
     access_expires_in = serializers.IntegerField()
+
+
+class LoginResponseSerializer(serializers.Serializer):
+    access = serializers.CharField()
+    refresh = serializers.CharField()
+    token_type = serializers.CharField()
+    tokenType = serializers.CharField()
+    access_expires_in = serializers.IntegerField()
+    accessExpiresIn = serializers.IntegerField()
+
+
+class RefreshResponseSerializer(serializers.Serializer):
+    access = serializers.CharField()
+    refresh = serializers.CharField(required=False)
+    accessExpiresIn = serializers.IntegerField(required=False)
+
+
+class ErrorDetailSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
+
+class EffectivePermissionSerializer(serializers.Serializer):
+    method = serializers.CharField()
+    path = serializers.CharField()
+    roleId = serializers.IntegerField()
+    roleName = serializers.CharField()
+
+
+class EffectivePermissionsSerializer(serializers.Serializer):
+    permissions = EffectivePermissionSerializer(many=True)

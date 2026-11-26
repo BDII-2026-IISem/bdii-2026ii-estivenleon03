@@ -1,6 +1,16 @@
 #!/usr/bin/env python
-import os
 import sys
+
+from config.project_python import use_project_python
+
+use_project_python()
+
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')

@@ -75,7 +75,7 @@
 
     <div class="flex flex-col gap-2">
       <label for="rr-role" class="text-sm font-semibold">1. Perfil que recibirá el permiso</label>
-      <p-select inputId="rr-role" formControlName="roleId" [options]="roles()" optionLabel="name" optionValue="id" [filter]="true" filterBy="name,description" [loading]="optionsLoading()" [disabled]="optionsLoading()" placeholder="Selecciona un perfil" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" (onChange)="onRoleChange()">
+      <p-select inputId="rr-role" formControlName="roleId" [options]="assignableRoles()" optionLabel="name" optionValue="id" [filter]="true" filterBy="name,description" [loading]="optionsLoading()" [disabled]="optionsLoading()" placeholder="Selecciona un perfil" styleClass="w-full bg-slate-800 text-white border-slate-600" appendTo="body" (onChange)="onRoleChange()">
         <ng-template #item let-role>
           <div class="flex flex-col gap-1">
             <span class="font-semibold">{{ role.name }}</span>
@@ -111,32 +111,72 @@
           Selecciona primero un perfil para ver los permisos disponibles.
         </p>
       } @else {
-        <div class="overflow-hidden rounded-lg border border-slate-700">
-          <div class="flex items-center gap-3 border-b border-slate-700 bg-slate-900 px-4 py-3">
-            <input id="rr-select-visible" type="checkbox" class="h-4 w-4 accent-emerald-500" [checked]="allVisibleSelected()" [disabled]="selectableResources().length === 0" (change)="toggleVisibleResources($event)" />
-            <label for="rr-select-visible" class="cursor-pointer text-sm font-medium text-slate-200">Seleccionar todos los resultados</label>
+        <div class="overflow-hidden rounded-lg border border-slate-700 bg-gradient-to-b from-emerald-100/90 to-emerald-50/90 text-slate-800 shadow-sm">
+          <div class="flex items-center justify-between gap-3 border-b border-emerald-200 bg-emerald-200/80 px-4 py-3">
+            <span class="text-sm font-semibold uppercase tracking-wide text-slate-700">Checklist de permisos</span>
+            <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+              <input id="rr-select-visible" type="checkbox" class="h-4 w-4 accent-emerald-500" [checked]="allVisibleSelected()" [disabled]="selectableResources().length === 0" (change)="toggleVisibleResources($event)" />
+              <span>Seleccionar todo</span>
+            </label>
           </div>
-          <div class="max-h-72 divide-y divide-slate-800 overflow-y-auto">
-            @for (option of selectableResources(); track option.id) {
-              <label class="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-800/70">
-                <input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-500" [checked]="isSelected(option.id)" [disabled]="saving()" (change)="toggleResource(option.id, $event)" />
-                <span class="min-w-0 flex-1">
-                  <span class="flex flex-wrap items-center gap-2">
-                    <p-tag [value]="option.actionLabel" [severity]="option.severity" [rounded]="true" />
-                    <span class="font-medium text-slate-100">{{ option.resourceName }}</span>
-                    @if (existingGrant(selectedRoleId(), option.id)) {
-                      <span class="text-xs text-amber-300">Se reactivará el permiso retirado</span>
-                    }
-                  </span>
-                  <code class="mt-1 block break-all text-xs text-slate-400">{{ option.method }} {{ option.path }}</code>
-                  <span class="mt-1 block text-xs text-slate-500">{{ actionDescription(option.method) }}</span>
-                </span>
-              </label>
-            } @empty {
-              <p class="p-4 text-sm text-slate-400">
-                {{ permissionFilter() ? 'No hay permisos que coincidan con la búsqueda.' : 'Este perfil ya tiene todos los permisos disponibles.' }}
-              </p>
-            }
+
+          <div class="max-h-[28rem] overflow-auto">
+            <table class="min-w-full border-collapse text-left text-sm">
+              <thead class="bg-emerald-200/60 text-slate-700">
+                <tr>
+                  <th class="px-3 py-3 font-bold">Recurso (Entidad)</th>
+                  <th class="px-3 py-3 text-center font-bold">Crear (C)</th>
+                  <th class="px-3 py-3 text-center font-bold">Leer (R)</th>
+                  <th class="px-3 py-3 text-center font-bold">Actualizar (U)</th>
+                  <th class="px-3 py-3 text-center font-bold">Eliminar (D)</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of permissionMatrixRows(); track row.label) {
+                  <tr class="border-t border-emerald-200/80 even:bg-emerald-50/80">
+                    <td class="px-3 py-3 font-medium text-slate-800">{{ row.label }}</td>
+
+                    <td class="px-3 py-3 text-center">
+                      @if (row.methods.C) {
+                        <input type="checkbox" class="h-4 w-4 accent-indigo-600" [checked]="isSelected(row.methods.C.id)" [disabled]="saving()" (change)="toggleResource(row.methods.C.id, $event)" />
+                      } @else {
+                        <span class="inline-block h-4 w-4 rounded-sm border border-slate-400 bg-slate-200/60"></span>
+                      }
+                    </td>
+
+                    <td class="px-3 py-3 text-center">
+                      @if (row.methods.R) {
+                        <input type="checkbox" class="h-4 w-4 accent-indigo-600" [checked]="isSelected(row.methods.R.id)" [disabled]="saving()" (change)="toggleResource(row.methods.R.id, $event)" />
+                      } @else {
+                        <span class="inline-block h-4 w-4 rounded-sm border border-slate-400 bg-slate-200/60"></span>
+                      }
+                    </td>
+
+                    <td class="px-3 py-3 text-center">
+                      @if (row.methods.U) {
+                        <input type="checkbox" class="h-4 w-4 accent-indigo-600" [checked]="isSelected(row.methods.U.id)" [disabled]="saving()" (change)="toggleResource(row.methods.U.id, $event)" />
+                      } @else {
+                        <span class="inline-block h-4 w-4 rounded-sm border border-slate-400 bg-slate-200/60"></span>
+                      }
+                    </td>
+
+                    <td class="px-3 py-3 text-center">
+                      @if (row.methods.D) {
+                        <input type="checkbox" class="h-4 w-4 accent-indigo-600" [checked]="isSelected(row.methods.D.id)" [disabled]="saving()" (change)="toggleResource(row.methods.D.id, $event)" />
+                      } @else {
+                        <span class="inline-block h-4 w-4 rounded-sm border border-slate-400 bg-slate-200/60"></span>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="px-4 py-5 text-sm text-slate-500">
+                      {{ permissionFilter() ? 'No hay permisos que coincidan con la búsqueda.' : 'Este perfil ya tiene todos los permisos disponibles.' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
         </div>
       }

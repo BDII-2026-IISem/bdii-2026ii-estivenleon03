@@ -91,6 +91,8 @@ export const routes: Routes = [
       },
       {
         path: 'admin/asignaciones',
+        canActivate: [permissionGuard],
+        data: { permission: 'GET /api/v1/user-roles' },
         loadComponent: () => import('./features/admin/role-users/role-user-list/role-user-list').then((m: any) => m.RoleUserList || m.default),
       },
       {
