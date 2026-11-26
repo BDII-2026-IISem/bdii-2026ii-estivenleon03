@@ -9,62 +9,47 @@ from drf_spectacular.views import (
 from rest_framework.permissions import AllowAny
 
 from apps.security.auth_views import LoginAPIView, LogoutAPIView, RefreshAPIView
-from apps.security.views import (
-    ProfileAPIView,
-    UserViewSet,
-    RoleViewSet,
-    PermissionViewSet,
-    UserRoleViewSet,
-    RolePermissionViewSet,
-)
-from apps.security.views import user_permissions_view
-from apps.patient.views import OwnerViewSet, PetViewSet
-from apps.client.views import ClientViewSet
-from apps.staff.views import VeterinarianViewSet
-from apps.appointment.views import AppointmentViewSet
-from apps.clinical.views import ConsultationViewSet, PrescriptionViewSet, VaccineViewSet, VaccineBatchViewSet, VaccineApplicationViewSet
-from apps.billing.views import PaymentViewSet, PaymentAuditViewSet
-from apps.product.views import ProductTypeViewSet, ProductViewSet
-from apps.sale.views import SaleViewSet
+from apps.security.views import ProfileAPIView, user_permissions_view
+from apps.security.urls import router as security_router
+from apps.client.urls import router as client_router
+from apps.patient.urls import router as patient_router
+from apps.staff.urls import router as staff_router
+from apps.appointment.urls import router as appointment_router
+from apps.clinical.urls import router as clinical_router
+from apps.billing.urls import router as billing_router
+from apps.product.urls import router as product_router
+from apps.sale.urls import router as sale_router
 
-router = DefaultRouter(use_regex_path=False)
-router.register(r'users', UserViewSet, basename='user')
-router.register(r'roles', RoleViewSet, basename='role')
-router.register(r'permissions', PermissionViewSet, basename='permission')
-router.register(r'user-roles', UserRoleViewSet, basename='userrole')
-router.register(r'role-users', UserRoleViewSet, basename='role-user')
-router.register(r'role-permissions', RolePermissionViewSet, basename='rolepermission')
-router.register(r'resources', PermissionViewSet, basename='resource')
-router.register(r'resource-roles', RolePermissionViewSet, basename='resource-role')
-router.register(r'owners', OwnerViewSet, basename='owner')
-router.register(r'clients', ClientViewSet, basename='client')
-router.register(r'pets', PetViewSet, basename='pet')
-router.register(r'veterinarians', VeterinarianViewSet, basename='veterinarian')
-router.register(r'appointments', AppointmentViewSet, basename='appointment')
-router.register(r'consultations', ConsultationViewSet, basename='consultation')
-router.register(r'prescriptions', PrescriptionViewSet, basename='prescription')
-router.register(r'vaccines', VaccineViewSet, basename='vaccine')
-router.register(r'vaccine-batches', VaccineBatchViewSet, basename='vaccinebatch')
-router.register(r'vaccine-applications', VaccineApplicationViewSet, basename='vaccineapplication')
-router.register(r'product-types', ProductTypeViewSet, basename='producttype')
-router.register(r'products', ProductViewSet, basename='product')
-router.register(r'sales', SaleViewSet, basename='sale')
-router.register(r'payments', PaymentViewSet, basename='payment')
-router.register(r'payment-audits', PaymentAuditViewSet, basename='paymentaudit')
+api_root_router = DefaultRouter(use_regex_path=False)
+for app_router in (
+    security_router,
+    patient_router,
+    client_router,
+    staff_router,
+    appointment_router,
+    clinical_router,
+    product_router,
+    sale_router,
+    billing_router,
+):
+    api_root_router.registry.extend(app_router.registry)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    # Endpoints de la API v1
-    path('api/v1/', include(router.urls)),
+    # Endpoints de la API v1 organizados por aplicación
+    path('api/v1/', api_root_router.get_api_root_view(), name='api-root'),
+    path('api/v1/', include('apps.security.urls')),
+    path('api/v1/', include('apps.patient.urls')),
+    path('api/v1/', include('apps.client.urls')),
+    path('api/v1/', include('apps.staff.urls')),
+    path('api/v1/', include('apps.appointment.urls')),
+    path('api/v1/', include('apps.clinical.urls')),
+    path('api/v1/', include('apps.product.urls')),
+    path('api/v1/', include('apps.sale.urls')),
+    path('api/v1/', include('apps.billing.urls')),
     
     # Autenticación, Permisos y Perfil bajo /api/v1/auth/
-    path('api/v1/auth/login/', LoginAPIView.as_view(), name='token_obtain_pair_v1'),
-    path('api/v1/auth/logout/', LogoutAPIView.as_view(), name='token_blacklist_v1'),
-    path('api/v1/auth/permissions/', user_permissions_view, name='auth-permissions-v1'),
-    path('api/v1/auth/profile/', ProfileAPIView.as_view(), name='auth-profile-v1'),
-    path('api/v1/auth/refresh/', RefreshAPIView.as_view(), name='token_refresh_v1'),
-
     # Rutas bajo /api/auth/ para compatibilidad
     path('api/auth/login/', LoginAPIView.as_view(), name='token_obtain_pair'),
     path('api/auth/logout/', LogoutAPIView.as_view(), name='token_blacklist'),

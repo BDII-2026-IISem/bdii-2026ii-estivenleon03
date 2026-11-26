@@ -38,7 +38,7 @@ DJango/
     └── billing/              # Pagos asociados a citas y auditoría de pagos
 ```
 
-Las rutas están centralizadas en [`config/urls.py`](config/urls.py); las aplicaciones no necesitan tener un archivo `urls.py` propio para que sus endpoints funcionen.
+Cada aplicación define sus endpoints en su propio `urls.py`. [`config/urls.py`](config/urls.py) los incluye bajo `/api/v1/` y conserva las rutas generales de autenticación, documentación y compatibilidad.
 
 ### ¿Qué significa `apps/`?
 
